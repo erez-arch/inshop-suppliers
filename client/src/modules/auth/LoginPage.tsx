@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { auth, AuthUser } from '../../services/api';
-import { Alert } from '../../components/ui/Alert';
-import { Button } from '../../components/ui/Button';
 import './login.css';
 
 interface LoginPageProps {
@@ -31,24 +29,28 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="login-page">
-      <div className="login-card">
+      <div className="login-card" role="main">
+        {/* Brand header */}
         <div className="login-header">
-          <span className="login-logo">🏪</span>
-          <h1 className="login-title">INSHOP ספקים</h1>
-          <p className="login-subtitle">ניהול ספקים ומלאי</p>
+          <div className="login-brand-mark" aria-hidden="true">🏪</div>
+          <h1 className="login-title">INSHOP</h1>
+          <p className="login-subtitle">מערכת ניהול ספקים ומלאי</p>
         </div>
 
+        <div className="login-divider" role="separator" />
+
+        {/* Error */}
         {error && (
-          <Alert type="error" onClose={() => setError('')}>
-            {error}
-          </Alert>
+          <div className="login-error" role="alert" aria-live="assertive">
+            <span className="login-error__icon">⚠️</span>
+            <span>{error}</span>
+          </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate>
+        {/* Form */}
+        <form onSubmit={handleSubmit} noValidate className="login-form">
           <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              דואר אלקטרוני
-            </label>
+            <label htmlFor="email" className="form-label">דואר אלקטרוני</label>
             <input
               id="email"
               type="email"
@@ -58,13 +60,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               autoComplete="email"
               placeholder="admin@inshop.local"
               required
+              disabled={loading}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              סיסמה
-            </label>
+            <label htmlFor="password" className="form-label">סיסמה</label>
             <input
               id="password"
               type="password"
@@ -74,23 +75,30 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               autoComplete="current-password"
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
 
-          <Button
+          <button
             type="submit"
-            variant="primary"
-            size="lg"
-            loading={loading}
-            style={{ width: '100%', marginTop: '1rem' }}
+            className="login-submit"
+            disabled={loading || !email || !password}
           >
-            כניסה למערכת
-          </Button>
+            {loading ? (
+              <>
+                <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                מתחבר...
+              </>
+            ) : (
+              'כניסה למערכת'
+            )}
+          </button>
         </form>
 
-        <p className="login-hint text-secondary text-sm">
-          פיתוח: admin@inshop.local / admin123
-        </p>
+        {/* Dev hint */}
+        <div className="login-hint" aria-label="פרטי כניסה לפיתוח">
+          admin@inshop.local / admin123
+        </div>
       </div>
     </div>
   );

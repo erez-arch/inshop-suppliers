@@ -1,31 +1,38 @@
+/* =====================================================================
+   MobileShell — Production SaaS
+   ===================================================================== */
 .mobile-shell {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--color-bg);
+  background: var(--color-page);
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .mobile-shell__header {
   flex-shrink: 0;
-  background-color: var(--color-surface);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: 10;
+  box-shadow: var(--shadow-xs);
 }
 
 .mobile-shell__content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-4);
+  padding: 1.25rem 1rem;
 }
 
 .mobile-shell__footer {
   flex-shrink: 0;
-  background-color: var(--color-surface);
+  background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  padding: var(--spacing-4);
+  padding: 0.875rem 1rem;
   position: sticky;
   bottom: 0;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
 }

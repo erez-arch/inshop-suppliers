@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { MobileShell } from '../../components/MobileLayout/MobileShell';
 import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
-import { Alert } from '../../components/ui/Alert';
 import { StatusChip } from '../../components/ui/StatusChip';
 import * as api from '../../services/api';
 import './trustee-wizard.css';
@@ -41,7 +40,6 @@ export default function TrusteeWizardPage() {
     setSubmitting(true);
     setError('');
     try {
-      // Update each line with received quantity
       for (const line of delivery.deliveryLines ?? []) {
         if (qtyMap[line.id] !== line.qtyReceived) {
           await api.deliveries.updateLine(deliveryId, line.id, {
@@ -58,30 +56,45 @@ export default function TrusteeWizardPage() {
     }
   };
 
+  // ── Loading ──
   if (loading) {
     return (
       <div className="trustee-loading">
         <div className="trustee-spinner" />
-        <p>טוען פרטי אספקה...</p>
+        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)' }}>טוען פרטי אספקה...</p>
       </div>
     );
   }
 
+  // ── Done ──
   if (done) {
     return (
       <div className="trustee-done">
-        <div className="trustee-done__icon">✅</div>
+        <div className="trustee-done__check">✅</div>
         <h1 className="trustee-done__title">האספקה אושרה!</h1>
-        <p className="trustee-done__sub">הקבלה נרשמה בהצלחה. תודה!</p>
-        {delivery && <p className="trustee-done__ref">אספקה: <strong>{delivery.reference}</strong></p>}
+        <p className="trustee-done__sub">הקבלה נרשמה בהצלחה. תודה על עבודתך!</p>
+        {delivery && (
+          <div className="trustee-done__ref">
+            <span>אספקה:</span>
+            <strong dir="ltr">{delivery.reference}</strong>
+          </div>
+        )}
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-muted)', marginTop: '0.25rem' }}>
+          ניתן לסגור את החלון
+        </p>
       </div>
     );
   }
 
+  // ── Not found ──
   if (!delivery) {
     return (
       <div className="trustee-error">
-        <Alert type="error">לא נמצאה אספקה. נא לבדוק את הקישור.</Alert>
+        <span style={{ fontSize: '3rem' }}>⚠️</span>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)' }}>אספקה לא נמצאה</h2>
+        <p style={{ color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)' }}>
+          {error || 'לא נמצאה אספקה. נא לבדוק את הקישור.'}
+        </p>
       </div>
     );
   }
@@ -90,9 +103,11 @@ export default function TrusteeWizardPage() {
     <MobileShell
       header={
         <div className="trustee-header">
-          <h1 className="trustee-header__title">קבלת אספקה — נאמן</h1>
+          <h1 className="trustee-header__title">
+            🏷️ קבלת אספקה — נאמן
+          </h1>
           <div className="trustee-header__meta">
-            <span className="trustee-header__ref">{delivery.reference}</span>
+            <span className="trustee-header__ref" dir="ltr">{delivery.reference}</span>
             <StatusChip status={delivery.status} />
           </div>
           <Stepper steps={STEPS} currentStep={step} />
@@ -102,33 +117,37 @@ export default function TrusteeWizardPage() {
         <div className="trustee-footer">
           {step > 0 && (
             <Button variant="secondary" onClick={() => setStep((s) => s - 1)} disabled={submitting}>
-              הקודם
+              → הקודם
             </Button>
           )}
           <div style={{ flex: 1 }} />
           {step === 0 && (
-            <Button onClick={() => setStep(1)}>
-              הבא — אישור קבלה
+            <Button variant="primary" onClick={() => setStep(1)}>
+              הבא — אישור קבלה ←
             </Button>
           )}
           {step === 1 && (
             <Button variant="primary" onClick={handleSubmit} loading={submitting}>
-              אשר קבלה
+              אשר קבלה ✓
             </Button>
           )}
         </div>
       }
     >
+      {/* Error */}
       {error && (
-        <div style={{ marginBottom: '1rem' }}>
-          <Alert type="error" onClose={() => setError('')}>{error}</Alert>
+        <div style={{ padding: '0.75rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+          <span style={{ flexShrink: 0 }}>⚠️</span>
+          <span style={{ flex: 1 }}>{error}</span>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto', padding: 0 }}>✕</button>
         </div>
       )}
 
-      {/* Step 0: Review items */}
+      {/* ── STEP 0: Review items ── */}
       {step === 0 && (
         <div className="trustee-step">
           <h2 className="trustee-step__title">פרטי הספק</h2>
+
           {delivery.contact && (
             <div className="trustee-contact-card">
               <div className="trustee-contact-row">
@@ -137,7 +156,9 @@ export default function TrusteeWizardPage() {
               </div>
               <div className="trustee-contact-row">
                 <span className="trustee-contact-label">טלפון:</span>
-                <a href={`tel:${delivery.contact.contactPhone}`}>{delivery.contact.contactPhone}</a>
+                <a href={`tel:${delivery.contact.contactPhone}`} style={{ color: 'var(--color-primary-600)' }}>
+                  {delivery.contact.contactPhone}
+                </a>
               </div>
               {delivery.contact.note && (
                 <div className="trustee-contact-row">
@@ -149,22 +170,27 @@ export default function TrusteeWizardPage() {
           )}
 
           <h2 className="trustee-step__title" style={{ marginTop: '1.5rem' }}>פריטים שהוזמנו</h2>
+
           {(delivery.deliveryLines ?? []).length === 0 ? (
-            <p style={{ color: 'var(--color-text-secondary)' }}>אין פריטים בדיווח זה.</p>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📭</div>
+              אין פריטים בדיווח זה
+            </div>
           ) : (
             <div className="trustee-lines">
               {(delivery.deliveryLines ?? []).map((line) => (
                 <div key={line.id} className="trustee-line">
                   <div className="trustee-line__name">{line.rawName}</div>
                   <div className="trustee-line__qty">
-                    <span className="trustee-line__qty-label">חשבונית:</span>
+                    <span className="trustee-line__qty-label">לפי חשבונית:</span>
                     <span className="trustee-line__qty-val">{line.qtyInvoice}</span>
                   </div>
                   <div className="trustee-line__qty">
-                    <span className="trustee-line__qty-label">לספירת מלאי:</span>
+                    <span className="trustee-line__qty-label">כמות שנספרה:</span>
                     <input
                       type="number"
                       min={0}
+                      inputMode="numeric"
                       className="trustee-line__input"
                       value={qtyMap[line.id] ?? 0}
                       onChange={(e) => setQtyMap((p) => ({ ...p, [line.id]: Number(e.target.value) }))}
@@ -175,7 +201,7 @@ export default function TrusteeWizardPage() {
             </div>
           )}
 
-          {/* Show invoices / media if present */}
+          {/* Invoice media */}
           {(delivery.media ?? []).length > 0 && (
             <div style={{ marginTop: '1.5rem' }}>
               <h2 className="trustee-step__title">תמונות חשבונית</h2>
@@ -187,7 +213,10 @@ export default function TrusteeWizardPage() {
                         <img src={`/uploads/${dm.media.storageKey}`} alt="חשבונית" className="trustee-media-img" />
                       </a>
                     ) : (
-                      <div className="trustee-media-placeholder">📄 {dm.media.originalFilename}</div>
+                      <div className="trustee-media-placeholder">
+                        <span>📄</span>
+                        <span>{dm.media.originalFilename}</span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -197,34 +226,35 @@ export default function TrusteeWizardPage() {
         </div>
       )}
 
-      {/* Step 1: Confirm receipt */}
+      {/* ── STEP 1: Confirm receipt ── */}
       {step === 1 && (
         <div className="trustee-step">
           <h2 className="trustee-step__title">אישור קבלה</h2>
-          <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
+          <p style={{ color: 'var(--color-muted)', marginBottom: '1.25rem', fontSize: 'var(--font-size-sm)' }}>
             בדוק את הכמויות שנספרו ואשר את קבלת הסחורה.
           </p>
 
           <div className="trustee-summary-table">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>פריט</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center' }}>חשבונית</th>
-                  <th style={{ padding: '0.5rem', textAlign: 'center' }}>נספר</th>
+                <tr style={{ borderBottom: '2px solid var(--color-border)', background: 'var(--color-surface-2)' }}>
+                  <th style={{ padding: '0.625rem 0.875rem', textAlign: 'right', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-muted)' }}>פריט</th>
+                  <th style={{ padding: '0.625rem 0.875rem', textAlign: 'center', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-muted)' }}>חשבונית</th>
+                  <th style={{ padding: '0.625rem 0.875rem', textAlign: 'center', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-muted)' }}>נספר</th>
                 </tr>
               </thead>
               <tbody>
                 {(delivery.deliveryLines ?? []).map((line) => {
-                  const diff = (qtyMap[line.id] ?? 0) - line.qtyInvoice;
+                  const counted = qtyMap[line.id] ?? 0;
+                  const diff = counted - line.qtyInvoice;
                   return (
                     <tr key={line.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '0.5rem' }}>{line.rawName}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center' }}>{line.qtyInvoice}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', color: diff < 0 ? 'var(--color-danger)' : diff > 0 ? 'var(--color-warning)' : 'inherit' }}>
-                        {qtyMap[line.id] ?? 0}
+                      <td style={{ padding: '0.625rem 0.875rem', fontWeight: 500 }}>{line.rawName}</td>
+                      <td style={{ padding: '0.625rem 0.875rem', textAlign: 'center', color: 'var(--color-muted)' }}>{line.qtyInvoice}</td>
+                      <td style={{ padding: '0.625rem 0.875rem', textAlign: 'center', fontWeight: 700, color: diff < 0 ? 'var(--color-danger-600)' : diff > 0 ? 'var(--color-warning-600)' : 'var(--color-success-600)' }}>
+                        {counted}
                         {diff !== 0 && (
-                          <span style={{ fontSize: '0.75rem', marginRight: '0.25rem' }}>
+                          <span style={{ fontSize: '0.75rem', marginRight: '0.25rem', opacity: 0.75 }}>
                             ({diff > 0 ? '+' : ''}{diff})
                           </span>
                         )}
@@ -236,10 +266,10 @@ export default function TrusteeWizardPage() {
             </table>
           </div>
 
-          <div style={{ marginTop: '1.5rem' }}>
-            <Alert type="info">
-              לאחר האישור, הנתונים יועברו למנהל לבדיקה סופית.
-            </Alert>
+          {/* Info note */}
+          <div style={{ marginTop: '1.25rem', padding: '0.875rem 1rem', background: 'var(--color-info-100)', border: '1px solid rgba(46,114,210,.15)', borderRadius: 'var(--radius-md)', color: 'var(--color-info-700)', fontSize: 'var(--font-size-sm)', display: 'flex', gap: '0.5rem' }}>
+            <span style={{ flexShrink: 0 }}>ℹ️</span>
+            <span>לאחר האישור, הנתונים יועברו למנהל לבדיקה סופית.</span>
           </div>
         </div>
       )}

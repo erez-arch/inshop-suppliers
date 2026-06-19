@@ -2,11 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as api from '../../services/api';
 import { Supplier } from '../../services/api';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 import { StatusChip } from '../../components/ui/StatusChip';
-import { DataTable, Column } from '../../components/ui/DataTable';
 import { Dialog } from '../../components/ui/Dialog';
-import { Alert } from '../../components/ui/Alert';
 
 interface FormData {
   supplierCode: string;
@@ -14,21 +11,6 @@ interface FormData {
 }
 
 const emptyForm: FormData = { supplierCode: '', name: '' };
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.5rem 0.75rem',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
-  fontSize: '1rem',
-  boxSizing: 'border-box',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontWeight: 600,
-  marginBottom: '0.25rem',
-};
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -54,9 +36,7 @@ export default function SuppliersPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadSuppliers();
-  }, [loadSuppliers]);
+  useEffect(() => { loadSuppliers(); }, [loadSuppliers]);
 
   function openCreate() {
     setEditTarget(null);
@@ -108,103 +88,131 @@ export default function SuppliersPage() {
     }
   }
 
-  const columns: Column<Supplier>[] = [
-    { key: 'supplierCode', header: 'קוד ספק', width: '120px' },
-    { key: 'name', header: 'שם ספק' },
-    {
-      key: 'status',
-      header: 'סטטוס',
-      width: '120px',
-      render: (row) => <StatusChip status={row.status} />,
-    },
-    {
-      key: 'actions',
-      header: 'פעולות',
-      width: '140px',
-      align: 'center',
-      render: (row) => (
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
-            עריכה
-          </Button>
-          <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}>
-            מחיקה
+  return (
+    <div>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-header__title">ספקים</h1>
+          <p className="page-header__sub">
+            {loading ? 'טוען...' : `${suppliers.length} ספקים`}
+          </p>
+        </div>
+        <div className="page-header__actions">
+          <Button variant="primary" onClick={openCreate}>
+            + הוסף ספק
           </Button>
         </div>
-      ),
-    },
-  ];
-
-  return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-6)',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>ספקים</h1>
-        <Button variant="primary" onClick={openCreate}>
-          + הוסף ספק
-        </Button>
       </div>
 
+      {/* Error */}
       {error && (
-        <div style={{ marginBottom: '1rem' }}>
-          <Alert type="error" onClose={() => setError('')}>
-            {error}
-          </Alert>
+        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem' }}>
+          ⚠️ {error}
+          <button onClick={() => setError('')} style={{ marginRight: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
         </div>
       )}
 
-      <Card noPadding>
-        <DataTable<Supplier>
-          columns={columns}
-          data={suppliers}
-          loading={loading}
-          keyExtractor={(row) => row.id}
-          emptyMessage="לא נמצאו ספקים"
-        />
-      </Card>
+      {/* Table card */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
+            <div className="spinner" style={{ width: 32, height: 32 }} />
+            <span style={{ fontSize: 'var(--font-size-sm)' }}>טוען ספקים...</span>
+          </div>
+        ) : suppliers.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state__icon">🏭</span>
+            <span className="empty-state__title">אין ספקים</span>
+            <span className="empty-state__sub">הוסף את הספק הראשון כדי להתחיל</span>
+            <Button variant="primary" onClick={openCreate} style={{ marginTop: '0.75rem' }}>+ הוסף ספק</Button>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>קוד ספק</th>
+                  <th>שם ספק</th>
+                  <th style={{ textAlign: 'center' }}>סטטוס</th>
+                  <th style={{ textAlign: 'center' }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {suppliers.map((s) => (
+                  <tr key={s.id}>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-muted)' }} dir="ltr">
+                        {s.supplierCode}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{s.name}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <StatusChip status={s.status} />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); openEdit(s); }}
+                          title="עריכה"
+                        >
+                          ✏️ עריכה
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(s); }}
+                          title="מחיקה"
+                        >
+                          מחיקה
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Create / Edit Dialog */}
       <Dialog
         open={dialogOpen}
         onClose={closeDialog}
-        title={editTarget ? 'עריכת ספק' : 'הוספת ספק'}
+        title={editTarget ? 'עריכת ספק' : 'הוספת ספק חדש'}
         size="sm"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={closeDialog} disabled={saving}>
-              ביטול
-            </Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>
+            <Button variant="secondary" onClick={closeDialog} disabled={saving}>ביטול</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving} disabled={!formData.supplierCode || !formData.name}>
               {editTarget ? 'שמור שינויים' : 'הוסף ספק'}
             </Button>
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={labelStyle}>קוד ספק</label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+          <div className="form-group">
+            <label className="form-label">קוד ספק</label>
             <input
               type="text"
+              className="form-input"
               value={formData.supplierCode}
-              onChange={(e) => setFormData((prev) => ({ ...prev, supplierCode: e.target.value }))}
-              style={inputStyle}
+              onChange={(e) => setFormData((p) => ({ ...p, supplierCode: e.target.value }))}
               placeholder="לדוגמה: SUP001"
               disabled={saving}
+              dir="ltr"
             />
           </div>
-          <div>
-            <label style={labelStyle}>שם ספק</label>
+          <div className="form-group">
+            <label className="form-label">שם ספק</label>
             <input
               type="text"
+              className="form-input"
               value={formData.name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              style={inputStyle}
+              onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
               placeholder="שם הספק"
               disabled={saving}
             />
@@ -220,16 +228,12 @@ export default function SuppliersPage() {
         size="sm"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              ביטול
-            </Button>
-            <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              מחיקה
-            </Button>
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>ביטול</Button>
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>מחיקה</Button>
           </div>
         }
       >
-        <p>
+        <p style={{ color: 'var(--color-text-2)' }}>
           האם למחוק את הספק <strong>{deleteTarget?.name}</strong>? פעולה זו אינה הפיכה.
         </p>
       </Dialog>

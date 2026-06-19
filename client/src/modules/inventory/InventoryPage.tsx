@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as api from '../../services/api';
-import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusChip } from '../../components/ui/StatusChip';
-import { DataTable, Column } from '../../components/ui/DataTable';
-import { Alert } from '../../components/ui/Alert';
 import { Dialog } from '../../components/ui/Dialog';
 
 export default function InventoryPage() {
@@ -20,6 +17,7 @@ export default function InventoryPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [startDialog, setStartDialog] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [completedCount, setCompletedCount] = useState<api.InventoryCount | null>(null);
 
   useEffect(() => {
     api.branches.list().then(setBranches).catch(() => {});
@@ -75,9 +73,7 @@ export default function InventoryPage() {
       await api.inventory.saveLine(activeCount.id, line.id, pendingQty[line.id] ?? 0, line.version);
       setCountLines((prev) =>
         prev.map((l) =>
-          l.id === line.id
-            ? { ...l, countedQty: pendingQty[line.id] ?? 0, saved: true }
-            : l
+          l.id === line.id ? { ...l, countedQty: pendingQty[line.id] ?? 0, saved: true } : l
         )
       );
     } catch (e: unknown) {
@@ -92,6 +88,7 @@ export default function InventoryPage() {
     setCompleting(true);
     try {
       await api.inventory.completeCount(activeCount.id, activeCount.version);
+      setCompletedCount(activeCount);
       setActiveCount(null);
       setCountLines([]);
       const updatedCounts = await api.inventory.counts(selectedBranch || undefined);
@@ -103,38 +100,43 @@ export default function InventoryPage() {
     }
   };
 
-  const balanceCols: Column<api.InventoryBalance>[] = [
-    { key: 'item', header: 'פריט', render: (r) => r.item?.name ?? r.itemId },
-    { key: 'branch', header: 'סניף', render: (r) => r.branch?.name ?? r.branchId },
-    { key: 'quantity', header: 'כמות', render: (r) => String(r.quantity) },
-  ];
-
-  const countsCols: Column<api.InventoryCount>[] = [
-    { key: 'reference', header: 'מספר ספירה' },
-    { key: 'branch', header: 'סניף', render: (r) => r.branch?.name ?? r.branchId },
-    { key: 'status', header: 'סטטוס', render: (r) => <StatusChip status={r.status} /> },
-    { key: 'createdAt', header: 'נפתח', render: (r) => new Date(r.createdAt).toLocaleDateString('he-IL') },
-  ];
+  const savedCount  = countLines.filter((l) => l.saved).length;
+  const totalLines  = countLines.length;
+  const progressPct = totalLines > 0 ? Math.round((savedCount / totalLines) * 100) : 0;
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>ניהול מלאי</h1>
-        <Button
-          onClick={() => setStartDialog(true)}
-          disabled={!selectedBranch || !!activeCount}
-        >
-          + פתח ספירת מלאי
-        </Button>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-header__title">ניהול מלאי</h1>
+          <p className="page-header__sub">ספירות מלאי ויתרות לפי סניף</p>
+        </div>
+        <div className="page-header__actions">
+          <Button
+            variant="primary"
+            onClick={() => setStartDialog(true)}
+            disabled={!selectedBranch || !!activeCount}
+          >
+            + פתח ספירת מלאי
+          </Button>
+        </div>
       </div>
 
-      {error && <Alert type="error" onClose={() => setError('')}>{error}</Alert>}
+      {/* Error */}
+      {error && (
+        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ⚠️ {error}
+          <button onClick={() => setError('')} style={{ marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
+        </div>
+      )}
 
-      <div style={{ marginBottom: '1rem' }}>
+      {/* Branch filter */}
+      <div className="filter-bar" style={{ marginBottom: '1.25rem' }}>
+        <label className="filter-bar__label">סניף:</label>
         <select
           value={selectedBranch}
           onChange={(e) => setSelectedBranch(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem', minWidth: 200 }}
         >
           <option value="">כל הסניפים</option>
           {branches.map((b) => (
@@ -143,92 +145,236 @@ export default function InventoryPage() {
         </select>
       </div>
 
-      {activeCount && (
-        <div style={{ marginBottom: '1.5rem' }}>
-        <Card title={`ספירת מלאי פעילה — ${activeCount.reference}`}
-          actions={
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <StatusChip status={activeCount.status} />
-              <Button variant="primary" size="sm" onClick={handleComplete} loading={completing}>
-                השלם ספירה
-              </Button>
-            </div>
-          }
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>פריט</th>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>יתרת פתיחה</th>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>כמות נספרת</th>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {countLines.map((line) => (
-                <tr key={line.id} style={{ borderBottom: '1px solid var(--color-border)', background: line.saved ? 'var(--color-success-light)' : undefined }}>
-                  <td style={{ padding: '0.5rem' }}>{line.item?.name ?? line.itemId}</td>
-                  <td style={{ padding: '0.5rem' }}>{line.balanceAtStart}</td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input
-                      type="number"
-                      min={0}
-                      value={pendingQty[line.id] ?? 0}
-                      onChange={(e) => setPendingQty((p) => ({ ...p, [line.id]: Number(e.target.value) }))}
-                      style={{ width: 80, padding: '0.25rem 0.5rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}
-                    />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <Button size="sm" variant="secondary" onClick={() => saveLine(line)} loading={saving[line.id]}>
-                      שמור
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+      {/* Success banner */}
+      {completedCount && (
+        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-success-100)', border: '1px solid rgba(26,156,98,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-success-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1.25rem', fontWeight: 500 }}>
+          ✅ ספירת מלאי {completedCount.reference} הושלמה בהצלחה!
+          <button onClick={() => setCompletedCount(null)} style={{ marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-        <Card title="יתרות מלאי">
-          <DataTable
-            columns={balanceCols}
-            data={balances}
-            loading={loading}
-            keyExtractor={(r) => `${r.branchId}-${r.itemId}`}
-            emptyMessage="אין יתרות מלאי"
-          />
-        </Card>
-        <Card title="ספירות מלאי">
-          <DataTable
-            columns={countsCols}
-            data={counts}
-            loading={loading}
-            keyExtractor={(r) => r.id}
-            emptyMessage="אין ספירות מלאי"
-          />
-        </Card>
+      {/* Active count */}
+      {activeCount && (
+        <div className="card" style={{ marginBottom: '1.25rem', overflow: 'hidden' }}>
+          <div className="card__header">
+            <div>
+              <h3 className="card__title">🔄 ספירת מלאי פעילה — {activeCount.reference}</h3>
+              <div style={{ marginTop: '0.375rem' }}>
+                <StatusChip status={activeCount.status} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-muted)', whiteSpace: 'nowrap' }}>
+                {savedCount}/{totalLines} שמורים
+              </span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleComplete}
+                loading={completing}
+                disabled={savedCount < totalLines}
+                title={savedCount < totalLines ? `נותרו ${totalLines - savedCount} פריטים לשמירה` : 'סיים ספירה'}
+              >
+                השלם ספירה
+              </Button>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {totalLines > 0 && (
+            <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem', fontSize: 'var(--font-size-xs)', color: 'var(--color-muted)' }}>
+                <span>התקדמות</span>
+                <span>{progressPct}%</span>
+              </div>
+              <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progressPct}%`, background: progressPct === 100 ? 'var(--color-success-600)' : 'var(--color-primary-600)', borderRadius: 3, transition: 'width 0.3s ease' }} />
+              </div>
+            </div>
+          )}
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>פריט</th>
+                  <th style={{ textAlign: 'center' }}>יתרת פתיחה</th>
+                  <th style={{ textAlign: 'center' }}>כמות נספרת</th>
+                  <th style={{ textAlign: 'center' }}>הפרש</th>
+                  <th style={{ textAlign: 'center' }}>סטטוס</th>
+                  <th style={{ textAlign: 'center' }}>שמור</th>
+                </tr>
+              </thead>
+              <tbody>
+                {countLines.map((line) => {
+                  const countedQty  = pendingQty[line.id] ?? 0;
+                  const openBalance = Number(line.balanceAtStart ?? 0);
+                  const diff        = countedQty - openBalance;
+                  return (
+                    <tr
+                      key={line.id}
+                      style={line.saved ? { background: 'rgba(26,156,98,0.04)' } : undefined}
+                    >
+                      <td style={{ fontWeight: 500 }}>{line.item?.name ?? line.itemId}</td>
+                      <td style={{ textAlign: 'center', color: 'var(--color-muted)' }}>{openBalance}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="number"
+                          min={0}
+                          value={pendingQty[line.id] ?? 0}
+                          onChange={(e) => setPendingQty((p) => ({ ...p, [line.id]: Number(e.target.value) }))}
+                          disabled={line.saved}
+                          style={{
+                            width: 72,
+                            padding: '0.25rem 0.375rem',
+                            border: `1.5px solid ${line.saved ? 'var(--color-success-600)' : 'var(--color-border-2)'}`,
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--font-size-sm)',
+                            textAlign: 'center',
+                            fontWeight: 600,
+                            background: line.saved ? 'var(--color-success-100)' : 'var(--color-surface)',
+                          }}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {diff !== 0 ? (
+                          <span style={{ fontWeight: 700, color: diff < 0 ? 'var(--color-danger-600)' : 'var(--color-warning-600)' }}>
+                            {diff > 0 ? '+' : ''}{diff}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--color-success-600)', fontWeight: 600 }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {line.saved ? (
+                          <span className="badge badge-green">✓ נשמר</span>
+                        ) : (
+                          <span className="badge badge-gray">לא נשמר</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {!line.saved && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => saveLine(line)}
+                            loading={saving[line.id]}
+                          >
+                            שמור
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Two columns: balances + counts history */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+        {/* Balances */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="card__header">
+            <h3 className="card__title">📊 יתרות מלאי</h3>
+          </div>
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)' }}>טוען...</div>
+          ) : balances.length === 0 ? (
+            <div className="empty-state" style={{ padding: '2rem' }}>
+              <span className="empty-state__icon">📭</span>
+              <span className="empty-state__title">אין יתרות</span>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>פריט</th>
+                    <th>סניף</th>
+                    <th style={{ textAlign: 'center' }}>כמות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {balances.map((b) => (
+                    <tr key={`${b.branchId}-${b.itemId}`}>
+                      <td style={{ fontWeight: 500 }}>{b.item?.name ?? b.itemId}</td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>{b.branch?.name ?? b.branchId}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{b.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Count history */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="card__header">
+            <h3 className="card__title">📋 היסטוריית ספירות</h3>
+          </div>
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)' }}>טוען...</div>
+          ) : counts.length === 0 ? (
+            <div className="empty-state" style={{ padding: '2rem' }}>
+              <span className="empty-state__icon">📋</span>
+              <span className="empty-state__title">אין ספירות</span>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>מספר ספירה</th>
+                    <th>סניף</th>
+                    <th style={{ textAlign: 'center' }}>סטטוס</th>
+                    <th>נפתח</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {counts.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-primary-700)' }} dir="ltr">{c.reference}</td>
+                      <td style={{ fontSize: '0.875rem' }}>{c.branch?.name ?? c.branchId}</td>
+                      <td style={{ textAlign: 'center' }}><StatusChip status={c.status} /></td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                        {new Date(c.createdAt).toLocaleDateString('he-IL')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Start count dialog */}
       <Dialog
         open={startDialog}
         onClose={() => setStartDialog(false)}
         title="פתח ספירת מלאי חדשה"
         size="sm"
         actions={
-          <>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setStartDialog(false)}>ביטול</Button>
-            <Button onClick={handleStart} disabled={!selectedBranch}>פתח ספירה</Button>
-          </>
+            <Button variant="primary" onClick={handleStart} disabled={!selectedBranch}>פתח ספירה</Button>
+          </div>
         }
       >
         {selectedBranch ? (
-          <p>
-            תפתח ספירת מלאי חדשה עבור סניף{' '}
-            <strong>{branches.find((b) => b.id === selectedBranch)?.name}</strong>.
-          </p>
+          <div>
+            <p style={{ marginBottom: '0.75rem', color: 'var(--color-text-2)' }}>
+              תפתח ספירת מלאי חדשה עבור סניף{' '}
+              <strong>{branches.find((b) => b.id === selectedBranch)?.name}</strong>.
+            </p>
+            <div style={{ padding: '0.75rem', background: 'var(--color-warning-100)', borderRadius: 'var(--radius-md)', color: 'var(--color-warning-700)', fontSize: 'var(--font-size-sm)' }}>
+              ⚠️ לפני תחילת ספירה, המערכת תבקש לסגור חשבוניות פתוחות.
+            </div>
+          </div>
         ) : (
           <p>בחר סניף תחילה.</p>
         )}

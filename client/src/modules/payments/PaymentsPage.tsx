@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import * as api from '../../services/api';
-import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatusChip } from '../../components/ui/StatusChip';
-import { DataTable, Column } from '../../components/ui/DataTable';
-import { Alert } from '../../components/ui/Alert';
 import { Dialog } from '../../components/ui/Dialog';
+
+const METHOD_LABELS: Record<string, string> = {
+  bank_transfer: 'העברה בנקאית',
+  check: 'המחאה',
+  credit_card: 'כרטיס אשראי',
+  cash: 'מזומן',
+};
+
+const LEDGER_TYPE_LABELS: Record<string, string> = {
+  liability: 'חבות',
+  payment: 'תשלום',
+  credit: 'זיכוי',
+  adjustment: 'תיקון',
+};
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<api.Payment[]>([]);
@@ -15,7 +26,12 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ supplierId: '', expectedAmount: '', method: 'bank_transfer', paymentDate: '' });
+  const [form, setForm] = useState({
+    supplierId: '',
+    expectedAmount: '',
+    method: 'bank_transfer',
+    paymentDate: '',
+  });
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
@@ -29,7 +45,6 @@ export default function PaymentsPage() {
 
   useEffect(() => { api.suppliers.list().then(setSuppliers).catch(() => {}); }, []);
   useEffect(loadPayments, [selectedSupplier]);
-
   useEffect(() => {
     if (selectedSupplier) {
       api.payments.ledger(selectedSupplier).then(setLedger).catch(() => {});
@@ -81,143 +96,252 @@ export default function PaymentsPage() {
     }
   };
 
-  const columns: Column<api.Payment>[] = [
-    { key: 'reference', header: 'מספר תשלום' },
-    { key: 'supplier', header: 'ספק', render: (r) => r.supplier?.name ?? r.supplierId },
-    { key: 'expectedAmount', header: 'סכום צפוי', render: (r) => `₪${r.expectedAmount}` },
-    { key: 'confirmedAmount', header: 'סכום מאושר', render: (r) => `₪${r.confirmedAmount}` },
-    { key: 'method', header: 'אמצעי', render: (r) => r.method ?? '—' },
-    { key: 'paymentDate', header: 'תאריך', render: (r) => r.paymentDate ? new Date(r.paymentDate).toLocaleDateString('he-IL') : '—' },
-    { key: 'status', header: 'סטטוס', render: (r) => <StatusChip status={r.status} /> },
-    {
-      key: 'actions',
-      header: '',
-      render: (r) => (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {r.status === 'ready_to_post' && (
-            <Button size="sm" onClick={(e) => { e.stopPropagation(); handlePost(r); }} loading={actionLoading[r.id]}>
-              פרסם
-            </Button>
-          )}
-          {r.status !== 'posted' && r.status !== 'cancelled' && (
-            <Button size="sm" variant="danger" onClick={(e) => { e.stopPropagation(); handleCancel(r); }} loading={actionLoading[`cancel-${r.id}`]}>
-              בטל
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const ledgerTypeLabelMap: Record<string, string> = {
-    liability: 'חבות',
-    payment: 'תשלום',
-    credit: 'זיכוי',
-    adjustment: 'תיקון',
-  };
+  const balanceNum = ledger ? parseFloat(ledger.balance) : 0;
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>תשלומים</h1>
-        <Button onClick={() => setShowCreate(true)}>+ תשלום חדש</Button>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-header__title">תשלומים לספקים</h1>
+          <p className="page-header__sub">
+            {loading ? 'טוען...' : `${payments.length} תשלומים`}
+          </p>
+        </div>
+        <div className="page-header__actions">
+          <Button variant="primary" onClick={() => setShowCreate(true)}>
+            + תשלום חדש
+          </Button>
+        </div>
       </div>
 
-      {error && <Alert type="error" onClose={() => setError('')}>{error}</Alert>}
+      {/* Error */}
+      {error && (
+        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ⚠️ {error}
+          <button onClick={() => setError('')} style={{ marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
+        </div>
+      )}
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+      {/* Filter */}
+      <div className="filter-bar" style={{ marginBottom: '1.25rem' }}>
+        <label className="filter-bar__label">ספק:</label>
         <select
           value={selectedSupplier}
           onChange={(e) => setSelectedSupplier(e.target.value)}
-          style={{ padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem', minWidth: 200 }}
         >
           <option value="">כל הספקים</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </div>
 
+      {/* Ledger balance card */}
       {ledger && (
-        <div style={{ marginBottom: '1.5rem' }}>
-        <Card title={`יתרת חשבון ספק`}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '1rem' }}>
-            <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700 }}>₪{ledger.balance}</span>
-            <span style={{ color: 'var(--color-text-secondary)' }}>יתרה לתשלום</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          {/* Balance KPI */}
+          <div className="card">
+            <div className="card__header">
+              <h3 className="card__title">💰 יתרת חשבון</h3>
+            </div>
+            <div className="card__body" style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: '2.25rem',
+                fontWeight: 800,
+                color: balanceNum > 0 ? 'var(--color-danger-600)' : balanceNum < 0 ? 'var(--color-success-600)' : 'var(--color-text)',
+                lineHeight: 1,
+                marginBottom: '0.375rem',
+              }}>
+                ₪{Math.abs(balanceNum).toFixed(2)}
+              </div>
+              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-muted)' }}>
+                {balanceNum > 0 ? 'לתשלום לספק' : balanceNum < 0 ? 'יתרת זכות' : 'מאוזן'}
+              </div>
+            </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>סוג</th>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>סכום</th>
-                <th style={{ padding: '0.5rem', textAlign: 'right' }}>תאריך</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ledger.entries.map((e) => (
-                <tr key={e.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '0.5rem' }}>{ledgerTypeLabelMap[e.entryType] ?? e.entryType}</td>
-                  <td style={{ padding: '0.5rem', color: parseFloat(e.amountSigned) < 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
-                    ₪{e.amountSigned}
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>{new Date(e.occurredAt).toLocaleDateString('he-IL')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+
+          {/* Ledger entries */}
+          <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="card__header">
+              <h3 className="card__title">📒 תנועות חשבון</h3>
+            </div>
+            <div style={{ overflowX: 'auto', maxHeight: '280px', overflowY: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>סוג</th>
+                    <th style={{ textAlign: 'center' }}>סכום</th>
+                    <th>תאריך</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.entries.map((e) => {
+                    const amount = parseFloat(e.amountSigned);
+                    return (
+                      <tr key={e.id}>
+                        <td>
+                          <span className={`badge ${amount < 0 ? 'badge-green' : 'badge-red'}`}>
+                            {LEDGER_TYPE_LABELS[e.entryType] ?? e.entryType}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: amount < 0 ? 'var(--color-success-700)' : 'var(--color-danger-700)' }}>
+                          {amount < 0 ? '-' : '+'}₪{Math.abs(amount).toFixed(2)}
+                        </td>
+                        <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                          {new Date(e.occurredAt).toLocaleDateString('he-IL')}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
-      <Card title="רשימת תשלומים">
-        <DataTable
-          columns={columns}
-          data={payments}
-          loading={loading}
-          keyExtractor={(r) => r.id}
-          emptyMessage="אין תשלומים"
-        />
-      </Card>
+      {/* Payments table */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card__header">
+          <h3 className="card__title">רשימת תשלומים</h3>
+        </div>
+        {loading ? (
+          <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
+            <div className="spinner" style={{ width: 32, height: 32 }} />
+            <span style={{ fontSize: 'var(--font-size-sm)' }}>טוען תשלומים...</span>
+          </div>
+        ) : payments.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state__icon">💳</span>
+            <span className="empty-state__title">אין תשלומים</span>
+            <span className="empty-state__sub">צור תשלום חדש כדי להתחיל</span>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>מספר תשלום</th>
+                  <th>ספק</th>
+                  <th style={{ textAlign: 'center' }}>סכום צפוי</th>
+                  <th style={{ textAlign: 'center' }}>סכום מאושר</th>
+                  <th>אמצעי</th>
+                  <th>תאריך</th>
+                  <th style={{ textAlign: 'center' }}>סטטוס</th>
+                  <th style={{ textAlign: 'center' }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-primary-700)' }} dir="ltr">
+                        {p.reference}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{p.supplier?.name ?? p.supplierId}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 600 }}>₪{p.expectedAmount}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 600 }}>₪{p.confirmedAmount}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                      {METHOD_LABELS[p.method ?? ''] ?? p.method ?? '—'}
+                    </td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                      {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('he-IL') : '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <StatusChip status={p.status} />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'center' }}>
+                        {p.status === 'ready_to_post' && (
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={(e) => { e.stopPropagation(); handlePost(p); }}
+                            loading={actionLoading[p.id]}
+                          >
+                            פרסם
+                          </Button>
+                        )}
+                        {p.status !== 'posted' && p.status !== 'cancelled' && (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={(e) => { e.stopPropagation(); handleCancel(p); }}
+                            loading={actionLoading[`cancel-${p.id}`]}
+                          >
+                            בטל
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
+      {/* Create payment dialog */}
       <Dialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
         title="תשלום חדש"
         actions={
-          <>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setShowCreate(false)}>ביטול</Button>
-            <Button onClick={handleCreate} loading={saving} disabled={!form.supplierId || !form.expectedAmount}>צור תשלום</Button>
-          </>
+            <Button variant="primary" onClick={handleCreate} loading={saving} disabled={!form.supplierId || !form.expectedAmount}>
+              צור תשלום
+            </Button>
+          </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem' }}>ספק</label>
-            <select value={form.supplierId} onChange={(e) => setForm((p) => ({ ...p, supplierId: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+          <div className="form-group">
+            <label className="form-label">ספק</label>
+            <select
+              value={form.supplierId}
+              onChange={(e) => setForm((p) => ({ ...p, supplierId: e.target.value }))}
+              className="form-input"
+            >
               <option value="">-- בחר ספק --</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem' }}>סכום צפוי (₪)</label>
-            <input type="number" min={0} step="0.01" value={form.expectedAmount}
+          <div className="form-group">
+            <label className="form-label">סכום צפוי (₪)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.expectedAmount}
               onChange={(e) => setForm((p) => ({ ...p, expectedAmount: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem' }} />
+              className="form-input"
+              dir="ltr"
+            />
           </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem' }}>אמצעי תשלום</label>
-            <select value={form.method} onChange={(e) => setForm((p) => ({ ...p, method: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label">אמצעי תשלום</label>
+            <select
+              value={form.method}
+              onChange={(e) => setForm((p) => ({ ...p, method: e.target.value }))}
+              className="form-input"
+            >
               <option value="bank_transfer">העברה בנקאית</option>
               <option value="check">המחאה</option>
               <option value="credit_card">כרטיס אשראי</option>
               <option value="cash">מזומן</option>
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem' }}>תאריך תשלום</label>
-            <input type="date" value={form.paymentDate}
+          <div className="form-group">
+            <label className="form-label">תאריך תשלום</label>
+            <input
+              type="date"
+              value={form.paymentDate}
               onChange={(e) => setForm((p) => ({ ...p, paymentDate: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '1rem' }} />
+              className="form-input"
+              dir="ltr"
+            />
           </div>
         </div>
       </Dialog>

@@ -1,40 +1,87 @@
-/* Design tokens — Hebrew RTL application */
+/* =====================================================================
+   INSHOP Design Tokens — Production SaaS RTL Hebrew
+   ===================================================================== */
 :root {
-  /* Colors */
-  --color-primary: #1a56db;
-  --color-primary-dark: #1e429f;
-  --color-primary-light: #ebf5fb;
-  --color-secondary: #0e9f6e;
-  --color-danger: #e02424;
-  --color-danger-light: #fde8e8;
-  --color-warning: #c27803;
-  --color-warning-light: #fdf6b2;
-  --color-success: #057a55;
-  --color-success-light: #def7ec;
-  --color-info: #1c64f2;
-  --color-info-light: #e1effe;
+  /* ── Brand Purple ─────────────────────────────────────────── */
+  --color-primary-700: #4327c7;
+  --color-primary-600: #5133d6;
+  --color-primary-500: #6247e0;
+  --color-primary-100: #eeebff;
+  --color-primary-50:  #f5f3ff;
 
-  /* Neutrals */
-  --color-bg: #f9fafb;
-  --color-surface: #ffffff;
-  --color-border: #e5e7eb;
-  --color-border-focus: #1a56db;
-  --color-text: #111928;
-  --color-text-secondary: #6b7280;
-  --color-text-disabled: #9ca3af;
-  --color-placeholder: #9ca3af;
+  /* ── Semantic ─────────────────────────────────────────────── */
+  --color-success-700: #16794d;
+  --color-success-600: #1a9c62;
+  --color-success-100: #e8f7ef;
+  --color-danger-700:  #c43232;
+  --color-danger-600:  #dc3838;
+  --color-danger-100:  #fff0f0;
+  --color-warning-700: #9a5a00;
+  --color-warning-600: #b86d00;
+  --color-warning-100: #fff6df;
+  --color-info-700:    #245caa;
+  --color-info-600:    #2e72d2;
+  --color-info-100:    #edf5ff;
 
-  /* Typography */
+  /* ── Neutrals ─────────────────────────────────────────────── */
+  --color-text:        #171a2b;
+  --color-text-2:      #3d4155;
+  --color-muted:       #667085;
+  --color-subtle:      #98a2b3;
+  --color-border:      #e4e7ec;
+  --color-border-2:    #d0d5dd;
+  --color-surface:     #ffffff;
+  --color-surface-2:   #f9fafb;
+  --color-page:        #f4f6fb;
+
+  /* ── Legacy aliases (keep backward compat) ────────────────── */
+  --color-bg:              var(--color-page);
+  --color-text-secondary:  var(--color-muted);
+  --color-border-focus:    var(--color-primary-600);
+  --color-danger:          var(--color-danger-600);
+  --color-danger-light:    var(--color-danger-100);
+  --color-success:         var(--color-success-600);
+  --color-success-light:   var(--color-success-100);
+  --color-warning:         var(--color-warning-600);
+  --color-warning-light:   var(--color-warning-100);
+  --color-info:            var(--color-info-600);
+  --color-info-light:      var(--color-info-100);
+  --color-primary:         var(--color-primary-600);
+  --color-primary-dark:    var(--color-primary-700);
+  --color-primary-light:   var(--color-primary-100);
+
+  /* ── Radii ────────────────────────────────────────────────── */
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ──────────────────────────────────────────────── */
+  --shadow-xs:   0 1px 2px rgba(16,24,40,.05);
+  --shadow-sm:   0 1px 3px rgba(16,24,40,.10), 0 1px 2px rgba(16,24,40,.06);
+  --shadow-md:   0 4px 8px -2px rgba(16,24,40,.10), 0 2px 4px -2px rgba(16,24,40,.06);
+  --shadow-lg:   0 12px 16px -4px rgba(16,24,40,.08), 0 4px 6px -2px rgba(16,24,40,.03);
+  --shadow-card: 0 2px 12px rgba(30,35,70,.06);
+
+  /* ── Sidebar ──────────────────────────────────────────────── */
+  --sidebar-bg:    #1e2235;
+  --sidebar-w:     240px;
+  --sidebar-width: var(--sidebar-w); /* legacy alias */
+  --topbar-height: 64px;
+  --touch-target:  44px;
+
+  /* ── Typography ───────────────────────────────────────────── */
   --font-family: 'Segoe UI', 'Arial', 'Helvetica Neue', sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
+  --font-size-xs:   0.75rem;   /* 12px */
+  --font-size-sm:   0.875rem;  /* 14px */
+  --font-size-base: 1rem;      /* 16px */
+  --font-size-lg:   1.125rem;  /* 18px */
+  --font-size-xl:   1.25rem;   /* 20px */
+  --font-size-2xl:  1.5rem;    /* 24px */
+  --font-size-3xl:  1.875rem;  /* 30px */
 
-  /* Spacing */
+  /* ── Spacing ──────────────────────────────────────────────── */
   --spacing-1: 0.25rem;
   --spacing-2: 0.5rem;
   --spacing-3: 0.75rem;
@@ -46,34 +93,15 @@
   --spacing-12: 3rem;
   --spacing-16: 4rem;
 
-  /* Radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-full: 9999px;
+  /* ── Status colours ───────────────────────────────────────── */
+  --status-draft:        #6b7280;
+  --status-pending:      var(--color-warning-600);
+  --status-active:       var(--color-success-600);
+  --status-approved:     var(--color-primary-600);
+  --status-cancelled:    var(--color-danger-600);
+  --status-closed:       #374151;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-
-  /* Sidebar */
-  --sidebar-width: 260px;
-  --topbar-height: 60px;
-
-  /* Min touch target */
-  --touch-target: 44px;
-
-  /* Transitions */
-  --transition-fast: 150ms ease;
+  /* ── Transitions ──────────────────────────────────────────── */
+  --transition-fast:   150ms ease;
   --transition-normal: 250ms ease;
-
-  /* Status colors */
-  --status-draft: #6b7280;
-  --status-pending: #c27803;
-  --status-active: #057a55;
-  --status-approved: #1a56db;
-  --status-cancelled: #e02424;
-  --status-closed: #374151;
 }

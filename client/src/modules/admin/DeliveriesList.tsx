@@ -2,10 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../../services/api';
 import { Delivery, Supplier } from '../../services/api';
-import { Card } from '../../components/ui/Card';
 import { StatusChip } from '../../components/ui/StatusChip';
-import { DataTable, Column } from '../../components/ui/DataTable';
-import { Alert } from '../../components/ui/Alert';
 
 const DELIVERY_STATUS_OPTIONS = [
   { value: '', label: 'כל הסטטוסים' },
@@ -24,28 +21,8 @@ function formatDate(iso: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-
-const selectStyle: React.CSSProperties = {
-  padding: '0.5rem 0.75rem',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
-  fontSize: '0.9375rem',
-  backgroundColor: 'var(--color-surface)',
-  minWidth: '160px',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.5rem 0.75rem',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
-  fontSize: '0.9375rem',
-  minWidth: '200px',
-};
 
 export default function DeliveriesList() {
   const navigate = useNavigate();
@@ -54,7 +31,6 @@ export default function DeliveriesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState('');
   const [supplierFilter, setSupplierFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -79,11 +55,9 @@ export default function DeliveriesList() {
     }
   }, [statusFilter, supplierFilter]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const filteredDeliveries = search.trim()
+  const filtered = search.trim()
     ? deliveries.filter(
         (d) =>
           d.reference.toLowerCase().includes(search.toLowerCase()) ||
@@ -91,85 +65,75 @@ export default function DeliveriesList() {
       )
     : deliveries;
 
-  const columns: Column<Delivery>[] = [
-    { key: 'reference', header: 'אסמכתא', width: '160px' },
-    {
-      key: 'supplier',
-      header: 'ספק',
-      render: (row) => row.supplier?.name ?? '—',
-    },
-    {
-      key: 'branch',
-      header: 'סניף',
-      render: (row) => row.branch?.name ?? '—',
-    },
-    {
-      key: 'status',
-      header: 'סטטוס',
-      width: '160px',
-      render: (row) => <StatusChip status={row.status} />,
-    },
-    {
-      key: 'creditState',
-      header: 'מצב קרדיט',
-      width: '130px',
-      render: (row) => row.creditState ?? '—',
-    },
-    {
-      key: 'createdAt',
-      header: 'תאריך יצירה',
-      width: '120px',
-      render: (row) => formatDate(row.createdAt),
-    },
-  ];
+  // KPI counts
+  const kpiPendingTrustee = deliveries.filter(
+    (d) => d.status === 'trustee_pending' || d.status === 'trustee_in_progress'
+  ).length;
+  const kpiAdminReview = deliveries.filter((d) => d.status === 'admin_review').length;
+  const kpiApproved = deliveries.filter((d) => d.status === 'approved_to_inventory').length;
+  const kpiCancelled = deliveries.filter((d) => d.status === 'cancelled').length;
 
   return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-6)',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>אספקות</h1>
+    <div>
+      {/* KPI row */}
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="kpi-card kpi-card--warning">
+          <div className="kpi-card__accent" />
+          <span className="kpi-card__icon">⏳</span>
+          <div className="kpi-card__value">{kpiPendingTrustee}</div>
+          <div className="kpi-card__label">ממתינות לנאמן</div>
+        </div>
+        <div className="kpi-card kpi-card--primary">
+          <div className="kpi-card__accent" />
+          <span className="kpi-card__icon">🔍</span>
+          <div className="kpi-card__value">{kpiAdminReview}</div>
+          <div className="kpi-card__label">בבדיקת מנהל</div>
+        </div>
+        <div className="kpi-card kpi-card--success">
+          <div className="kpi-card__accent" />
+          <span className="kpi-card__icon">✅</span>
+          <div className="kpi-card__value">{kpiApproved}</div>
+          <div className="kpi-card__label">אושרו למלאי</div>
+        </div>
+        <div className="kpi-card kpi-card--danger">
+          <div className="kpi-card__accent" />
+          <span className="kpi-card__icon">✕</span>
+          <div className="kpi-card__value">{kpiCancelled}</div>
+          <div className="kpi-card__label">בוטלו</div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.75rem',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-4)',
-        }}
-      >
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-header__title">תור אספקות</h1>
+          <p className="page-header__sub">
+            {loading ? 'טוען...' : `${filtered.length} אספקות`}
+          </p>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div className="filter-bar">
+        <span className="filter-bar__label">סינון:</span>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          style={selectStyle}
           aria-label="סנן לפי סטטוס"
         >
           {DELIVERY_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
 
         <select
           value={supplierFilter}
           onChange={(e) => setSupplierFilter(e.target.value)}
-          style={selectStyle}
           aria-label="סנן לפי ספק"
         >
           <option value="">כל הספקים</option>
           {suppliers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
+            <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
 
@@ -178,27 +142,138 @@ export default function DeliveriesList() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="חיפוש לפי אסמכתא / ספק..."
-          style={inputStyle}
           aria-label="חיפוש"
+          style={{ flex: 1, minWidth: 200 }}
         />
+
+        {(statusFilter || supplierFilter || search) && (
+          <button
+            onClick={() => { setStatusFilter(''); setSupplierFilter(''); setSearch(''); }}
+            style={{
+              background: 'none', border: 'none', color: 'var(--color-muted)',
+              cursor: 'pointer', fontSize: 'var(--font-size-sm)', padding: '0 0.25rem',
+              minHeight: 'auto', minWidth: 'auto'
+            }}
+          >
+            נקה סינון ✕
+          </button>
+        )}
       </div>
 
+      {/* Error */}
       {error && (
-        <Alert type="error" onClose={() => setError('')}>
-          {error}
-        </Alert>
+        <div style={{
+          padding: '0.875rem 1rem',
+          background: 'var(--color-danger-100)',
+          border: '1px solid rgba(220,56,56,.2)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--color-danger-700)',
+          fontSize: 'var(--font-size-sm)',
+          marginBottom: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}>
+          ⚠️ {error}
+          <button onClick={loadData} style={{ marginRight: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 600, minHeight: 'auto', minWidth: 'auto' }}>
+            נסה שוב
+          </button>
+        </div>
       )}
 
-      <Card noPadding>
-        <DataTable<Delivery>
-          columns={columns}
-          data={filteredDeliveries}
-          loading={loading}
-          keyExtractor={(row) => row.id}
-          emptyMessage="לא נמצאו אספקות"
-          onRowClick={(row) => navigate(`/admin/deliveries/${row.id}`)}
-        />
-      </Card>
+      {/* Table card */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
+            <div className="spinner" style={{ width: 32, height: 32 }} />
+            <span style={{ fontSize: 'var(--font-size-sm)' }}>טוען אספקות...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state__icon">📭</span>
+            <span className="empty-state__title">לא נמצאו אספקות</span>
+            <span className="empty-state__sub">
+              {statusFilter || supplierFilter || search
+                ? 'נסה לשנות את פרמטרי הסינון'
+                : 'עדיין לא נוצרו אספקות במערכת'}
+            </span>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table data-table--clickable" role="grid">
+              <thead>
+                <tr>
+                  <th>אסמכתא</th>
+                  <th>תאריך</th>
+                  <th>ספק</th>
+                  <th>סניף</th>
+                  <th>איש קשר</th>
+                  <th>מצב קרדיט</th>
+                  <th>סטטוס</th>
+                  <th style={{ textAlign: 'center' }}>פעולה</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((d) => (
+                  <tr
+                    key={d.id}
+                    onClick={() => navigate(`/admin/deliveries/${d.id}`)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/admin/deliveries/${d.id}`)}
+                    aria-label={`אספקה ${d.reference}`}
+                  >
+                    <td>
+                      <span style={{ fontWeight: 600, color: 'var(--color-primary-700)', fontFamily: 'monospace', fontSize: '0.8125rem' }} dir="ltr">
+                        {d.reference}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--color-muted)', whiteSpace: 'nowrap' }}>
+                      {formatDate(d.createdAt)}
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{d.supplier?.name ?? '—'}</td>
+                    <td>{d.branch?.name ?? '—'}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.8125rem' }}>
+                      {d.contact?.contactName ?? '—'}
+                    </td>
+                    <td>
+                      {d.creditState ? (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--color-muted)' }}>
+                          {d.creditState}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td><StatusChip status={d.status} /></td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/deliveries/${d.id}`); }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          background: 'var(--color-primary-50)',
+                          color: 'var(--color-primary-700)',
+                          border: '1px solid var(--color-primary-100)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.3125rem 0.75rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          minHeight: 'auto',
+                          whiteSpace: 'nowrap',
+                          transition: 'background var(--transition-fast)',
+                        }}
+                        aria-label={`פתח אספקה ${d.reference}`}
+                      >
+                        פתח →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

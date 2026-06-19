@@ -2,10 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as api from '../../services/api';
 import { Item } from '../../services/api';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { DataTable, Column } from '../../components/ui/DataTable';
 import { Dialog } from '../../components/ui/Dialog';
-import { Alert } from '../../components/ui/Alert';
 
 interface FormData {
   itemCode: string;
@@ -14,32 +11,13 @@ interface FormData {
   assortmentActive: boolean;
 }
 
-const emptyForm: FormData = {
-  itemCode: '',
-  name: '',
-  barcode: '',
-  assortmentActive: true,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.5rem 0.75rem',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 'var(--radius-md)',
-  fontSize: '1rem',
-  boxSizing: 'border-box',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontWeight: 600,
-  marginBottom: '0.25rem',
-};
+const emptyForm: FormData = { itemCode: '', name: '', barcode: '', assortmentActive: true };
 
 export default function ItemsPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Item | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
@@ -51,8 +29,7 @@ export default function ItemsPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.items.list();
-      setItems(data);
+      setItems(await api.items.list());
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'שגיאה בטעינת פריטים');
     } finally {
@@ -60,9 +37,7 @@ export default function ItemsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadItems();
-  }, [loadItems]);
+  useEffect(() => { loadItems(); }, [loadItems]);
 
   function openCreate() {
     setEditTarget(null);
@@ -72,12 +47,7 @@ export default function ItemsPage() {
 
   function openEdit(item: Item) {
     setEditTarget(item);
-    setFormData({
-      itemCode: item.itemCode,
-      name: item.name,
-      barcode: item.barcode ?? '',
-      assortmentActive: item.assortmentActive,
-    });
+    setFormData({ itemCode: item.itemCode, name: item.name, barcode: item.barcode ?? '', assortmentActive: item.assortmentActive });
     setDialogOpen(true);
   }
 
@@ -97,11 +67,8 @@ export default function ItemsPage() {
         barcode: formData.barcode || undefined,
         assortmentActive: formData.assortmentActive,
       };
-      if (editTarget) {
-        await api.items.update(editTarget.id, payload);
-      } else {
-        await api.items.create(payload);
-      }
+      if (editTarget) await api.items.update(editTarget.id, payload);
+      else await api.items.create(payload);
       closeDialog();
       await loadItems();
     } catch (err: unknown) {
@@ -125,77 +92,113 @@ export default function ItemsPage() {
     }
   }
 
-  const columns: Column<Item>[] = [
-    { key: 'itemCode', header: 'קוד פריט', width: '120px' },
-    { key: 'name', header: 'שם פריט' },
-    { key: 'barcode', header: 'ברקוד', width: '150px' },
-    {
-      key: 'assortmentActive',
-      header: 'פעיל בסל',
-      width: '100px',
-      align: 'center',
-      render: (row) => (
-        <span
-          style={{
-            color: row.assortmentActive ? 'var(--color-success)' : 'var(--color-text-secondary)',
-            fontWeight: 600,
-          }}
-        >
-          {row.assortmentActive ? 'כן' : 'לא'}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'פעולות',
-      width: '140px',
-      align: 'center',
-      render: (row) => (
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEdit(row); }}>
-            עריכה
-          </Button>
-          <Button variant="danger" size="sm" onClick={(e) => { e.stopPropagation(); setDeleteTarget(row); }}>
-            מחיקה
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const filtered = search
+    ? items.filter((i) =>
+        i.name.toLowerCase().includes(search.toLowerCase()) ||
+        i.itemCode.toLowerCase().includes(search.toLowerCase()) ||
+        (i.barcode ?? '').includes(search)
+      )
+    : items;
 
   return (
-    <div style={{ padding: 'var(--spacing-6)' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 'var(--spacing-6)',
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>פריטים</h1>
-        <Button variant="primary" onClick={openCreate}>
-          + הוסף פריט
-        </Button>
+    <div>
+      {/* Page header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-header__title">פריטים</h1>
+          <p className="page-header__sub">{loading ? 'טוען...' : `${filtered.length} מתוך ${items.length} פריטים`}</p>
+        </div>
+        <div className="page-header__actions">
+          <Button variant="primary" onClick={openCreate}>+ הוסף פריט</Button>
+        </div>
       </div>
 
+      {/* Error */}
       {error && (
-        <Alert type="error" onClose={() => setError('')}>
-          {error}
-        </Alert>
+        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ⚠️ {error}
+          <button onClick={() => setError('')} style={{ marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
+        </div>
       )}
 
-      <Card noPadding>
-        <DataTable<Item>
-          columns={columns}
-          data={items}
-          loading={loading}
-          keyExtractor={(row) => row.id}
-          emptyMessage="לא נמצאו פריטים"
+      {/* Search bar */}
+      <div className="filter-bar" style={{ marginBottom: '1.25rem' }}>
+        <label className="filter-bar__label">חיפוש:</label>
+        <input
+          type="search"
+          placeholder="שם פריט, קוד, ברקוד..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ minWidth: 220 }}
         />
-      </Card>
+        {search && (
+          <button onClick={() => setSearch('')}
+            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 'var(--font-size-sm)', padding: '0 0.25rem', minHeight: 'auto', minWidth: 'auto' }}>
+            נקה ✕
+          </button>
+        )}
+      </div>
 
-      {/* Create / Edit Dialog */}
+      {/* Table card */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
+            <div className="spinner" style={{ width: 32, height: 32 }} />
+            <span style={{ fontSize: 'var(--font-size-sm)' }}>טוען פריטים...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state__icon">📦</span>
+            <span className="empty-state__title">{search ? 'לא נמצאו פריטים' : 'אין פריטים'}</span>
+            <span className="empty-state__sub">{search ? `אין תוצאות עבור "${search}"` : 'הוסף פריט ראשון למערכת'}</span>
+            {!search && <Button variant="primary" onClick={openCreate} style={{ marginTop: '0.75rem' }}>+ הוסף פריט</Button>}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>קוד פריט</th>
+                  <th>שם פריט</th>
+                  <th>ברקוד</th>
+                  <th style={{ textAlign: 'center' }}>פעיל בסל</th>
+                  <th style={{ textAlign: 'center' }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-primary-700)', fontWeight: 700 }} dir="ltr">
+                        {item.itemCode}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{item.name}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-muted)' }} dir="ltr">
+                      {item.barcode || '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {item.assortmentActive ? (
+                        <span className="badge badge-green">✓ פעיל</span>
+                      ) : (
+                        <span className="badge badge-gray">לא פעיל</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(item)}>עריכה</Button>
+                        <Button variant="danger" size="sm" onClick={() => setDeleteTarget(item)}>מחיקה</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create / Edit dialog */}
       <Dialog
         open={dialogOpen}
         onClose={closeDialog}
@@ -203,75 +206,42 @@ export default function ItemsPage() {
         size="sm"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={closeDialog} disabled={saving}>
-              ביטול
-            </Button>
-            <Button variant="primary" onClick={handleSave} loading={saving}>
-              {editTarget ? 'שמור שינויים' : 'הוסף פריט'}
-            </Button>
+            <Button variant="secondary" onClick={closeDialog} disabled={saving}>ביטול</Button>
+            <Button variant="primary" onClick={handleSave} loading={saving}>{editTarget ? 'שמור שינויים' : 'הוסף פריט'}</Button>
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={labelStyle}>קוד פריט</label>
-            <input
-              type="text"
-              value={formData.itemCode}
-              onChange={(e) => setFormData((prev) => ({ ...prev, itemCode: e.target.value }))}
-              style={inputStyle}
-              placeholder="לדוגמה: ITEM001"
-              disabled={saving}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="form-group">
+            <label className="form-label">קוד פריט <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
+            <input type="text" className="form-input" value={formData.itemCode}
+              onChange={(e) => setFormData((p) => ({ ...p, itemCode: e.target.value }))}
+              placeholder="לדוגמה: ITEM001" disabled={saving} dir="ltr" />
           </div>
-          <div>
-            <label style={labelStyle}>שם פריט</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-              style={inputStyle}
-              placeholder="שם הפריט"
-              disabled={saving}
-            />
+          <div className="form-group">
+            <label className="form-label">שם פריט <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
+            <input type="text" className="form-input" value={formData.name}
+              onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+              placeholder="שם הפריט" disabled={saving} />
           </div>
-          <div>
-            <label style={labelStyle}>ברקוד</label>
-            <input
-              type="text"
-              value={formData.barcode}
-              onChange={(e) => setFormData((prev) => ({ ...prev, barcode: e.target.value }))}
-              style={inputStyle}
-              placeholder="ברקוד (אופציונלי)"
-              disabled={saving}
-            />
+          <div className="form-group">
+            <label className="form-label">ברקוד</label>
+            <input type="text" className="form-input" value={formData.barcode}
+              onChange={(e) => setFormData((p) => ({ ...p, barcode: e.target.value }))}
+              placeholder="ברקוד (אופציונלי)" disabled={saving} dir="ltr" inputMode="numeric" />
           </div>
-          <div>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={formData.assortmentActive}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, assortmentActive: e.target.checked }))
-                }
-                disabled={saving}
-                style={{ width: '1rem', height: '1rem' }}
-              />
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-2)' }}>
+              <input type="checkbox" checked={formData.assortmentActive}
+                onChange={(e) => setFormData((p) => ({ ...p, assortmentActive: e.target.checked }))}
+                disabled={saving} style={{ width: '1rem', height: '1rem', cursor: 'pointer' }} />
               פעיל בסל המוצרים
             </label>
           </div>
         </div>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete dialog */}
       <Dialog
         open={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
@@ -279,18 +249,18 @@ export default function ItemsPage() {
         size="sm"
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-              ביטול
-            </Button>
-            <Button variant="danger" onClick={handleDelete} loading={deleting}>
-              מחיקה
-            </Button>
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>ביטול</Button>
+            <Button variant="danger" onClick={handleDelete} loading={deleting}>מחיקה</Button>
           </div>
         }
       >
-        <p>
-          האם למחוק את הפריט <strong>{deleteTarget?.name}</strong>? פעולה זו אינה הפיכה.
-        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '2rem', flexShrink: 0 }}>🗑️</span>
+          <p style={{ margin: 0, color: 'var(--color-text-2)', lineHeight: 1.6 }}>
+            האם למחוק את הפריט <strong>{deleteTarget?.name}</strong>?<br />
+            <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-danger-600)' }}>פעולה זו אינה הפיכה.</span>
+          </p>
+        </div>
       </Dialog>
     </div>
   );

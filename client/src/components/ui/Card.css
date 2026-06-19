@@ -1,8 +1,11 @@
+/* =====================================================================
+   Card — Production SaaS
+   ===================================================================== */
 .card {
-  background-color: var(--color-surface);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -10,25 +13,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-4) var(--spacing-6);
+  gap: 1rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .card__title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: 700;
   color: var(--color-text);
   margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .card__actions {
   display: flex;
-  gap: var(--spacing-2);
+  gap: 0.5rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .card__body {
-  padding: var(--spacing-6);
+  padding: 1.25rem;
 }
 
 .card__body--no-padding {
