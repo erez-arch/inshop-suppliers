@@ -1,0 +1,79 @@
+/* Design tokens — Hebrew RTL application */
+:root {
+  /* Colors */
+  --color-primary: #1a56db;
+  --color-primary-dark: #1e429f;
+  --color-primary-light: #ebf5fb;
+  --color-secondary: #0e9f6e;
+  --color-danger: #e02424;
+  --color-danger-light: #fde8e8;
+  --color-warning: #c27803;
+  --color-warning-light: #fdf6b2;
+  --color-success: #057a55;
+  --color-success-light: #def7ec;
+  --color-info: #1c64f2;
+  --color-info-light: #e1effe;
+
+  /* Neutrals */
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-border-focus: #1a56db;
+  --color-text: #111928;
+  --color-text-secondary: #6b7280;
+  --color-text-disabled: #9ca3af;
+  --color-placeholder: #9ca3af;
+
+  /* Typography */
+  --font-family: 'Segoe UI', 'Arial', 'Helvetica Neue', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --topbar-height: 60px;
+
+  /* Min touch target */
+  --touch-target: 44px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Status colors */
+  --status-draft: #6b7280;
+  --status-pending: #c27803;
+  --status-active: #057a55;
+  --status-approved: #1a56db;
+  --status-cancelled: #e02424;
+  --status-closed: #374151;
+}

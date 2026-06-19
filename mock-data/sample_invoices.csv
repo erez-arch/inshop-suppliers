@@ -1,0 +1,3 @@
+invoice_number,supplier_code,branch_code,date,total,image_url
+INV-12547,TNUVA,RAMAT_GAN,2026-06-17,3248.50,/demo/invoices/INV-12547.jpg
+INV-12548,STRAUSS,TEL_AVIV,2026-06-17,1980.10,/demo/invoices/INV-12548.jpg

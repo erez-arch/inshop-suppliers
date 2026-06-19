@@ -1,0 +1,920 @@
+// INSHOP Suppliers & Inventory — Prisma Schema (SQLite)
+// Money: Decimal(14,2) stored as string in SQLite; use number in TS with careful parsing
+// Quantities: Int
+// Timestamps: DateTime (UTC)
+// UUIDs: String (SQLite has no native UUID type)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums are not supported in SQLite via Prisma — store as String ───────────
+
+model Supplier {
+  id             String   @id @default(uuid())
+  supplierCode   String   @unique @map("supplier_code")
+  name           String
+  status         String   @default("active") // record_status: active|inactive|archived
+  legacyPayload  String?  @map("legacy_payload") // JSON stored as text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  deliveries          Delivery[]           @relation("SupplierDeliveries")
+  aiRecognizedDeliveries Delivery[]        @relation("AiRecognizedSupplierDeliveries")
+  supplierItemCodes   SupplierItemCode[]
+  orderRules          OrderRule[]
+  notificationDests   NotificationDestination[]
+  creditRequests      CreditRequest[]
+  ledgerEntries       SupplierLedgerEntry[]
+  payments            Payment[]
+  supplierUsers       SupplierUser[]
+  invoices            Invoice[]
+
+  @@map("suppliers")
+}
+
+model Branch {
+  id           String   @id @default(uuid())
+  branchCode   String   @unique @map("branch_code")
+  name         String
+  address      String?
+  status       String   @default("active")
+  legacyPayload String? @map("legacy_payload")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  primaryTrustees     Trustee[]       @relation("PrimaryBranch")
+  trusteeBranches     TrusteeBranch[]
+  deliveries          Delivery[]      @relation("BranchDeliveries")
+  selectedDeliveries  Delivery[]      @relation("SelectedBranchDeliveries")
+  aiRecognizedDeliveries Delivery[]   @relation("AiRecognizedBranchDeliveries")
+  orderRules          OrderRule[]
+  notificationDests   NotificationDestination[]
+  inventoryBalances   InventoryBalance[]
+  inventoryMovements  InventoryMovement[]
+  inventoryCounts     InventoryCount[]
+  userBranchPerms     UserBranchPermission[]
+  invoices            Invoice[]
+
+  @@map("branches")
+}
+
+model Item {
+  id               String   @id @default(uuid())
+  itemCode         String   @unique @map("item_code")
+  name             String
+  imageUrl         String?  @map("image_url")
+  barcode          String?
+  assortmentActive Boolean  @default(true) @map("assortment_active")
+  status           String   @default("active")
+  legacyPayload    String?  @map("legacy_payload")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  supplierItemCodes     SupplierItemCode[]
+  orderRuleItems        OrderRuleItem[]
+  deliveryLines         DeliveryLine[]
+  invoiceLines          InvoiceLine[]
+  creditRequestLines    CreditRequestLine[]
+  inventoryBalances     InventoryBalance[]
+  inventoryMovements    InventoryMovement[]
+  inventoryCountLines   InventoryCountLine[]
+
+  @@map("items")
+}
+
+model Trustee {
+  id              String   @id @default(uuid())
+  trusteeCode     String   @unique @map("trustee_code")
+  name            String
+  phone           String?
+  imageUrl        String?  @map("image_url")
+  primaryBranchId String?  @map("primary_branch_id")
+  status          String   @default("active")
+  legacyPayload   String?  @map("legacy_payload")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  primaryBranch   Branch?         @relation("PrimaryBranch", fields: [primaryBranchId], references: [id])
+  trusteeBranches TrusteeBranch[]
+  rewards         TrusteeReward[]
+
+  @@map("trustees")
+}
+
+model TrusteeBranch {
+  trusteeId String  @map("trustee_id")
+  branchId  String  @map("branch_id")
+  active    Boolean @default(true)
+
+  trustee Trustee @relation(fields: [trusteeId], references: [id], onDelete: Cascade)
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([trusteeId, branchId])
+  @@map("trustee_branches")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String?   @unique
+  phone        String?
+  displayName  String    @map("display_name")
+  passwordHash String?   @map("password_hash")
+  status       String    @default("active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  userRoles             UserRole[]
+  userBranchPermissions UserBranchPermission[]
+  supplierUsers         SupplierUser[]
+  uploadedMedia         MediaObject[]          @relation("UploadedByUser")
+  inventoryCounts       InventoryCount[]
+  deliveryIssuesResolved DeliveryIssue[]
+  aiAnalysesApproved    AiAnalysis[]           @relation("ApprovedBy")
+  aiAnalysesOverridden  AiAnalysis[]           @relation("OverriddenBy")
+  creditRequests        CreditRequest[]
+  creditDocumentsSubmitted CreditDocument[]    @relation("SubmittedBy")
+  creditDocumentsReviewed  CreditDocument[]    @relation("ReviewedBy")
+  ledgerEntries         SupplierLedgerEntry[]
+  payments              Payment[]              @relation("CreatedPayments")
+  paymentsPosted        Payment[]              @relation("PostedPayments")
+  orderRulesCreated     OrderRule[]            @relation("OrderRuleCreatedBy")
+  orderRulesUpdated     OrderRule[]            @relation("OrderRuleUpdatedBy")
+  inventoryMovements    InventoryMovement[]
+  auditLogs             AuditLog[]
+  mockImports           MockImport[]
+
+  @@map("users")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  role   String // user_role: admin|inventory_counter|supplier_accountant|integration_service
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("user_roles")
+}
+
+model UserBranchPermission {
+  userId               String  @map("user_id")
+  branchId             String  @map("branch_id")
+  canCount             Boolean @default(false) @map("can_count")
+  canReviewDeliveries  Boolean @default(false) @map("can_review_deliveries")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+  @@map("user_branch_permissions")
+}
+
+model SupplierUser {
+  userId      String  @map("user_id")
+  supplierId  String  @map("supplier_id")
+  isPrimary   Boolean @default(false) @map("is_primary")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([userId, supplierId])
+  @@map("supplier_users")
+}
+
+model SupplierItemCode {
+  id                  String   @id @default(uuid())
+  supplierId          String   @map("supplier_id")
+  itemId              String   @map("item_id")
+  supplierItemCode    String?  @map("supplier_item_code")
+  supplierItemName    String?  @map("supplier_item_name")
+  packagingQty        Int?     @map("packaging_qty")
+  isPrimary           Boolean  @default(false) @map("is_primary")
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  supplier       Supplier        @relation(fields: [supplierId], references: [id])
+  item           Item            @relation(fields: [itemId], references: [id])
+  orderRuleItems OrderRuleItem[]
+
+  @@map("supplier_item_codes")
+}
+
+// ─── Order Rules ──────────────────────────────────────────────────────────────
+
+model OrderRule {
+  id                   String   @id @default(uuid())
+  branchId             String   @map("branch_id")
+  supplierId           String   @map("supplier_id")
+  status               String   @default("draft") // order_rule_status
+  deliveryWeekdays     String   @default("[]") @map("delivery_weekdays") // JSON array
+  averageLeadTimeDays  Int      @default(0) @map("average_lead_time_days")
+  minimumOrderAmount   String   @default("0") @map("minimum_order_amount") // Decimal as string
+  version              Int      @default(0)
+  createdBy            String?  @map("created_by")
+  updatedBy            String?  @map("updated_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  branch     Branch       @relation(fields: [branchId], references: [id])
+  supplier   Supplier     @relation(fields: [supplierId], references: [id])
+  createdByUser User?     @relation("OrderRuleCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User?     @relation("OrderRuleUpdatedBy", fields: [updatedBy], references: [id])
+  items      OrderRuleItem[]
+
+  @@map("order_rules")
+}
+
+model OrderRuleItem {
+  id                       String   @id @default(uuid())
+  orderRuleId              String   @map("order_rule_id")
+  itemId                   String   @map("item_id")
+  targetInventoryQty       Int      @default(0) @map("target_inventory_qty")
+  packagingQty             Int      @default(1) @map("packaging_qty")
+  preferredSupplierItemCodeId String? @map("preferred_supplier_item_code_id")
+  active                   Boolean  @default(true)
+  version                  Int      @default(0)
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  orderRule          OrderRule        @relation(fields: [orderRuleId], references: [id], onDelete: Cascade)
+  item               Item             @relation(fields: [itemId], references: [id])
+  preferredItemCode  SupplierItemCode? @relation(fields: [preferredSupplierItemCodeId], references: [id])
+
+  @@unique([orderRuleId, itemId])
+  @@map("order_rule_items")
+}
+
+model NotificationDestination {
+  id         String   @id @default(uuid())
+  supplierId String   @map("supplier_id")
+  branchId   String?  @map("branch_id")
+  purpose    String   // destination_purpose: order|credit
+  label      String
+  phone      String
+  priority   String   @default("primary") // destination_priority: primary|backup
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  branch   Branch?  @relation(fields: [branchId], references: [id])
+
+  @@map("notification_destinations")
+}
+
+// ─── Access Links & Idempotency ───────────────────────────────────────────────
+
+model AccessLink {
+  id           String    @id @default(uuid())
+  tokenHash    String    @unique @map("token_hash")
+  scope        String
+  subjectType  String?   @map("subject_type")
+  subjectId    String?   @map("subject_id")
+  resourceType String?   @map("resource_type")
+  resourceId   String?   @map("resource_id")
+  status       String    @default("active") // access_link_status
+  expiresAt    DateTime  @map("expires_at")
+  completedAt  DateTime? @map("completed_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("access_links")
+}
+
+model IdempotencyRecord {
+  id             String    @id @default(uuid())
+  actorKey       String    @map("actor_key")
+  idempotencyKey String    @map("idempotency_key")
+  operation      String
+  requestHash    String    @map("request_hash")
+  responseStatus Int?      @map("response_status")
+  responseBody   String?   @map("response_body") // JSON
+  entityType     String?   @map("entity_type")
+  entityId       String?   @map("entity_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  expiresAt      DateTime? @map("expires_at")
+
+  @@unique([actorKey, idempotencyKey, operation])
+  @@map("idempotency_records")
+}
+
+// ─── Deliveries ───────────────────────────────────────────────────────────────
+
+model Delivery {
+  id                      String    @id @default(uuid())
+  reference               String    @unique
+  supplierId              String?   @map("supplier_id")
+  branchId                String?   @map("branch_id")
+  status                  String    @default("draft") // delivery_status
+  creditState             String    @default("none") @map("credit_state") // delivery_credit_state
+  selectedBranchId        String?   @map("selected_branch_id")
+  aiRecognizedSupplierId  String?   @map("ai_recognized_supplier_id")
+  aiRecognizedBranchId    String?   @map("ai_recognized_branch_id")
+  supplierReportedAt      DateTime? @map("supplier_reported_at")
+  trusteeClaimedAt        DateTime? @map("trustee_claimed_at")
+  trusteeReceivedAt       DateTime? @map("trustee_received_at")
+  inventoryApprovedAt     DateTime? @map("inventory_approved_at")
+  closedAt                DateTime? @map("closed_at")
+  cancelledAt             DateTime? @map("cancelled_at")
+  cancellationReason      String?   @map("cancellation_reason")
+  version                 Int       @default(0)
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  supplier               Supplier?  @relation("SupplierDeliveries", fields: [supplierId], references: [id])
+  branch                 Branch?    @relation("BranchDeliveries", fields: [branchId], references: [id])
+  selectedBranch         Branch?    @relation("SelectedBranchDeliveries", fields: [selectedBranchId], references: [id])
+  aiRecognizedSupplier   Supplier?  @relation("AiRecognizedSupplierDeliveries", fields: [aiRecognizedSupplierId], references: [id])
+  aiRecognizedBranch     Branch?    @relation("AiRecognizedBranchDeliveries", fields: [aiRecognizedBranchId], references: [id])
+  contact                DeliveryContact?
+  media                  DeliveryMedia[]
+  invoices               Invoice[]
+  deliveryLines          DeliveryLine[]
+  deliveryIssues         DeliveryIssue[]
+  creditRequest          CreditRequest?
+  reward                 TrusteeReward?
+
+  @@map("deliveries")
+}
+
+model DeliveryContact {
+  deliveryId   String   @id @map("delivery_id")
+  contactName  String   @map("contact_name")
+  contactPhone String   @map("contact_phone")
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_contacts")
+}
+
+model MediaObject {
+  id                  String    @id @default(uuid())
+  mediaType           String    @map("media_type") // media_type enum
+  status              String    @default("pending_upload") @map("status") // media_status
+  storageKey          String?   @unique @map("storage_key")
+  previewStorageKey   String?   @map("preview_storage_key")
+  originalFilename    String?   @map("original_filename")
+  contentType         String?   @map("content_type")
+  sizeBytes           Int?      @map("size_bytes")
+  checksum            String?
+  width               Int?
+  height              Int?
+  uploadedByUserId    String?   @map("uploaded_by_user_id")
+  uploadedByActorType String?   @map("uploaded_by_actor_type")
+  uploadedByActorId   String?   @map("uploaded_by_actor_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  readyAt             DateTime? @map("ready_at")
+  rejectedReason      String?   @map("rejected_reason")
+
+  uploadedByUser    User?           @relation("UploadedByUser", fields: [uploadedByUserId], references: [id])
+  deliveryMedia     DeliveryMedia[]
+  invoices          Invoice[]
+  creditDocuments   CreditDocument[]
+  paymentDocuments  PaymentDocument[]
+  mockImports       MockImport[]
+
+  @@map("media_objects")
+}
+
+model DeliveryMedia {
+  deliveryId      String @map("delivery_id")
+  mediaId         String @map("media_id")
+  sortOrder       Int    @default(0) @map("sort_order")
+  sourceActorType String @map("source_actor_type")
+
+  delivery Delivery    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  media    MediaObject @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@id([deliveryId, mediaId])
+  @@map("delivery_media")
+}
+
+model Invoice {
+  id            String    @id @default(uuid())
+  deliveryId    String    @map("delivery_id")
+  source        String    // invoice_source: supplier|trustee|admin
+  mediaId       String?   @map("media_id")
+  invoiceNumber String?   @map("invoice_number")
+  invoiceDate   DateTime? @map("invoice_date")
+  totalAmount   String?   @map("total_amount") // Decimal as string
+  supplierId    String?   @map("supplier_id")
+  branchId      String?   @map("branch_id")
+  rawOcr        String?   @map("raw_ocr") // JSON
+  aiStatus      String?   @map("ai_status")
+  isPrimary     Boolean   @default(true) @map("is_primary")
+  version       Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  delivery     Delivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  media        MediaObject?  @relation(fields: [mediaId], references: [id])
+  supplier     Supplier?     @relation(fields: [supplierId], references: [id])
+  branch       Branch?       @relation(fields: [branchId], references: [id])
+  invoiceLines InvoiceLine[]
+
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id               String   @id @default(uuid())
+  invoiceId        String   @map("invoice_id")
+  lineNumber       Int?     @map("line_number")
+  rawName          String   @map("raw_name")
+  supplierItemCode String?  @map("supplier_item_code")
+  matchedItemId    String?  @map("matched_item_id")
+  qty              Int      @default(0)
+  unitPrice        String?  @map("unit_price") // Decimal as string
+  lineTotal        String?  @map("line_total") // Decimal as string
+  matchSource      String   @default("unmatched") @map("match_source")
+  confidence       String?  // Decimal as string (0-1)
+  rawPayload       String?  @map("raw_payload") // JSON
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  matchedItem Item?   @relation(fields: [matchedItemId], references: [id])
+
+  @@map("invoice_lines")
+}
+
+model DeliveryLine {
+  id                String   @id @default(uuid())
+  deliveryId        String   @map("delivery_id")
+  invoiceLineId     String?  @map("invoice_line_id")
+  itemId            String?  @map("item_id")
+  rawName           String   @map("raw_name")
+  supplierItemCode  String?  @map("supplier_item_code")
+  qtyInvoice        Int      @default(0) @map("qty_invoice")
+  qtyReceived       Int      @default(0) @map("qty_received")
+  qtyInventory      Int      @default(0) @map("qty_inventory")
+  unitPrice         String?  @map("unit_price") // Decimal as string
+  includeInCredit   Boolean  @default(true) @map("include_in_credit")
+  matchSource       String   @default("unmatched") @map("match_source")
+  confidence        String?  // Decimal as string
+  confirmedByTrustee Boolean @default(false) @map("confirmed_by_trustee")
+  confirmedByAdmin   Boolean @default(false) @map("confirmed_by_admin")
+  adminChangeReason  String? @map("admin_change_reason")
+  sortOrder          Int     @default(0) @map("sort_order")
+  version            Int     @default(0)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  delivery         Delivery    @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  item             Item?       @relation(fields: [itemId], references: [id])
+  creditRequestLines CreditRequestLine[]
+
+  @@map("delivery_lines")
+}
+
+model DeliveryIssue {
+  id         String    @id @default(uuid())
+  deliveryId String    @map("delivery_id")
+  code       String
+  severity   String    // issue_severity: info|warning|error|critical
+  message    String
+  blocking   Boolean   @default(false)
+  evidence   String?   // JSON
+  confidence String?   // Decimal as string
+  resolvedAt DateTime? @map("resolved_at")
+  resolvedBy String?   @map("resolved_by")
+  resolution String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  resolvedByUser User? @relation(fields: [resolvedBy], references: [id])
+
+  @@map("delivery_issues")
+}
+
+// ─── AI ──────────────────────────────────────────────────────────────────────
+
+model AiAnalysis {
+  id               String    @id @default(uuid())
+  capability       String
+  status           String    @default("pending") // ai_status
+  entityType       String    @map("entity_type")
+  entityId         String    @map("entity_id")
+  provider         String?
+  model            String?
+  modelVersion     String?   @map("model_version")
+  inputMediaIds    String    @default("[]") @map("input_media_ids") // JSON array
+  inputChecksums   String    @default("[]") @map("input_checksums") // JSON array
+  rawResult        String?   @map("raw_result") // JSON
+  normalizedResult String?   @map("normalized_result") // JSON
+  confidence       String?   // Decimal as string
+  warnings         String    @default("[]") // JSON array
+  approvedBy       String?   @map("approved_by")
+  approvedAt       DateTime? @map("approved_at")
+  overriddenBy     String?   @map("overridden_by")
+  overrideReason   String?   @map("override_reason")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  errorCode        String?   @map("error_code")
+  errorMessage     String?   @map("error_message")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  approvedByUser   User? @relation("ApprovedBy", fields: [approvedBy], references: [id])
+  overriddenByUser User? @relation("OverriddenBy", fields: [overriddenBy], references: [id])
+
+  @@map("ai_analyses")
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+model InventoryBalance {
+  branchId  String   @map("branch_id")
+  itemId    String   @map("item_id")
+  quantity  Int      @default(0)
+  version   Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  @@id([branchId, itemId])
+  @@map("inventory_balances")
+}
+
+model InventoryMovement {
+  id                String    @id @default(uuid())
+  branchId          String    @map("branch_id")
+  itemId            String    @map("item_id")
+  movementType      String    @map("movement_type") // inventory_movement_type
+  quantityDelta     Int       @map("quantity_delta")
+  balanceAfter      Int       @map("balance_after")
+  sourceType        String    @map("source_type")
+  sourceId          String?   @map("source_id")
+  externalReference String?   @map("external_reference")
+  idempotencyKey    String    @unique @map("idempotency_key")
+  reversedMovementId String?  @map("reversed_movement_id")
+  occurredAt        DateTime  @map("occurred_at")
+  createdBy         String?   @map("created_by")
+  metadata          String?   // JSON
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  branch            Branch          @relation(fields: [branchId], references: [id])
+  item              Item            @relation(fields: [itemId], references: [id])
+  createdByUser     User?           @relation(fields: [createdBy], references: [id])
+  reversedMovement  InventoryMovement? @relation("ReversedMovement", fields: [reversedMovementId], references: [id])
+  reversalMovements InventoryMovement[] @relation("ReversedMovement")
+
+  @@map("inventory_movements")
+}
+
+model InventoryCount {
+  id                   String    @id @default(uuid())
+  reference            String    @unique
+  branchId             String    @map("branch_id")
+  countedByUserId      String    @map("counted_by_user_id")
+  status               String    @default("waiting_for_legacy_close") // count_status
+  legacyCloseResult    String?   @map("legacy_close_result") // JSON
+  assortmentSnapshotAt DateTime? @map("assortment_snapshot_at")
+  startedAt            DateTime? @map("started_at")
+  completedAt          DateTime? @map("completed_at")
+  lockedAt             DateTime? @map("locked_at")
+  cancelledAt          DateTime? @map("cancelled_at")
+  cancellationReason   String?   @map("cancellation_reason")
+  version              Int       @default(0)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  branch        Branch               @relation(fields: [branchId], references: [id])
+  countedByUser User                 @relation(fields: [countedByUserId], references: [id])
+  lines         InventoryCountLine[]
+
+  @@map("inventory_counts")
+}
+
+model InventoryCountLine {
+  id            String    @id @default(uuid())
+  countId       String    @map("count_id")
+  itemId        String    @map("item_id")
+  defaultQty    Int       @default(0) @map("default_qty")
+  balanceAtStart Int      @default(0) @map("balance_at_start")
+  countedQty    Int       @default(0) @map("counted_qty")
+  saved         Boolean   @default(false)
+  savedAt       DateTime? @map("saved_at")
+  lastChangedAt DateTime  @default(now()) @map("last_changed_at")
+  version       Int       @default(0)
+
+  count InventoryCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  item  Item           @relation(fields: [itemId], references: [id])
+
+  @@unique([countId, itemId])
+  @@map("inventory_count_lines")
+}
+
+// ─── Credits ──────────────────────────────────────────────────────────────────
+
+model CreditRequest {
+  id                  String    @id @default(uuid())
+  reference           String    @unique
+  deliveryId          String    @unique @map("delivery_id")
+  supplierId          String    @map("supplier_id")
+  status              String    @default("draft") // credit_status
+  requestedAmount     String    @map("requested_amount") // Decimal as string
+  dueDate             DateTime? @map("due_date")
+  note                String?
+  sentAt              DateTime? @map("sent_at")
+  closedAt            DateTime? @map("closed_at")
+  cancelledAt         DateTime? @map("cancelled_at")
+  cancellationReason  String?   @map("cancellation_reason")
+  version             Int       @default(0)
+  createdBy           String?   @map("created_by")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  delivery        Delivery           @relation(fields: [deliveryId], references: [id])
+  supplier        Supplier           @relation(fields: [supplierId], references: [id])
+  createdByUser   User?              @relation(fields: [createdBy], references: [id])
+  lines           CreditRequestLine[]
+  documents       CreditDocument[]
+
+  @@map("credit_requests")
+}
+
+model CreditRequestLine {
+  id              String @id @default(uuid())
+  creditRequestId String @map("credit_request_id")
+  deliveryLineId  String @map("delivery_line_id")
+  itemId          String @map("item_id")
+  qtyInvoice      Int    @map("qty_invoice")
+  qtyReceived     Int    @map("qty_received")
+  shortageQty     Int    @map("shortage_qty")
+  unitPrice       String @map("unit_price") // Decimal as string
+  requestedAmount String @map("requested_amount") // Decimal as string
+  reason          String?
+
+  creditRequest CreditRequest @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  deliveryLine  DeliveryLine  @relation(fields: [deliveryLineId], references: [id])
+  item          Item          @relation(fields: [itemId], references: [id])
+
+  @@unique([creditRequestId, deliveryLineId])
+  @@map("credit_request_lines")
+}
+
+model CreditDocument {
+  id              String    @id @default(uuid())
+  creditRequestId String    @map("credit_request_id")
+  mediaId         String    @map("media_id")
+  versionNumber   Int       @map("version_number")
+  documentNumber  String?   @map("document_number")
+  documentDate    DateTime? @map("document_date")
+  recognizedAmount String?  @map("recognized_amount") // Decimal as string
+  submittedAmount  String?  @map("submitted_amount")  // Decimal as string
+  approvedAmount   String?  @map("approved_amount")   // Decimal as string
+  status          String    @default("uploaded")
+  submittedByUserId String? @map("submitted_by_user_id")
+  reviewedByUserId  String? @map("reviewed_by_user_id")
+  reviewReason    String?   @map("review_reason")
+  submittedAt     DateTime  @default(now()) @map("submitted_at")
+  reviewedAt      DateTime? @map("reviewed_at")
+
+  creditRequest  CreditRequest @relation(fields: [creditRequestId], references: [id], onDelete: Cascade)
+  media          MediaObject   @relation(fields: [mediaId], references: [id])
+  submittedByUser User?        @relation("SubmittedBy", fields: [submittedByUserId], references: [id])
+  reviewedByUser  User?        @relation("ReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@unique([creditRequestId, versionNumber])
+  @@map("credit_documents")
+}
+
+model SupplierLedgerEntry {
+  id              String    @id @default(uuid())
+  supplierId      String    @map("supplier_id")
+  entryType       String    @map("entry_type") // ledger_entry_type
+  amountSigned    String    @map("amount_signed") // Decimal as string
+  currency        String    @default("ILS")
+  sourceType      String    @map("source_type")
+  sourceId        String?   @map("source_id")
+  reference       String?
+  idempotencyKey  String    @unique @map("idempotency_key")
+  reversedEntryId String?   @map("reversed_entry_id")
+  occurredAt      DateTime  @map("occurred_at")
+  createdBy       String?   @map("created_by")
+  reason          String?
+  metadata        String?   // JSON
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  supplier          Supplier             @relation(fields: [supplierId], references: [id])
+  createdByUser     User?                @relation(fields: [createdBy], references: [id])
+  reversedEntry     SupplierLedgerEntry? @relation("ReversedEntry", fields: [reversedEntryId], references: [id])
+  reversalEntries   SupplierLedgerEntry[] @relation("ReversedEntry")
+  paymentPosted     Payment?             @relation("PostedLedgerEntry")
+  paymentAllocations PaymentAllocation[]
+
+  @@map("supplier_ledger_entries")
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                    String    @id @default(uuid())
+  reference             String    @unique
+  supplierId            String    @map("supplier_id")
+  status                String    @default("draft") // payment_status
+  expectedAmount        String    @default("0") @map("expected_amount") // Decimal as string
+  confirmedAmount       String    @default("0") @map("confirmed_amount") // Decimal as string
+  method                String?   // payment_method
+  paymentDate           DateTime? @map("payment_date")
+  externalReference     String?   @map("external_reference")
+  mismatchOverrideReason String?  @map("mismatch_override_reason")
+  postedLedgerEntryId   String?   @unique @map("posted_ledger_entry_id")
+  postedAt              DateTime? @map("posted_at")
+  reversedAt            DateTime? @map("reversed_at")
+  version               Int       @default(0)
+  createdBy             String?   @map("created_by")
+  postedBy              String?   @map("posted_by")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  supplier          Supplier              @relation(fields: [supplierId], references: [id])
+  createdByUser     User?                 @relation("CreatedPayments", fields: [createdBy], references: [id])
+  postedByUser      User?                 @relation("PostedPayments", fields: [postedBy], references: [id])
+  postedLedgerEntry SupplierLedgerEntry?  @relation("PostedLedgerEntry", fields: [postedLedgerEntryId], references: [id])
+  documents         PaymentDocument[]
+  allocations       PaymentAllocation[]
+
+  @@map("payments")
+}
+
+model PaymentDocument {
+  paymentId String  @map("payment_id")
+  mediaId   String  @map("media_id")
+  isPrimary Boolean @default(true) @map("is_primary")
+
+  payment Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  media   MediaObject @relation(fields: [mediaId], references: [id])
+
+  @@id([paymentId, mediaId])
+  @@map("payment_documents")
+}
+
+model PaymentAllocation {
+  id            String   @id @default(uuid())
+  paymentId     String   @map("payment_id")
+  ledgerEntryId String   @map("ledger_entry_id")
+  amount        String   // Decimal as string
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  payment     Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  ledgerEntry SupplierLedgerEntry @relation(fields: [ledgerEntryId], references: [id])
+
+  @@unique([paymentId, ledgerEntryId])
+  @@map("payment_allocations")
+}
+
+// ─── Trustee Rewards ──────────────────────────────────────────────────────────
+
+model TrusteeReward {
+  id                  String    @id @default(uuid())
+  trusteeId           String    @map("trustee_id")
+  deliveryId          String    @unique @map("delivery_id")
+  invoiceTotal        String    @map("invoice_total") // Decimal as string
+  rewardPercent       String    @default("2.0") @map("reward_percent") // Decimal as string
+  rewardAmount        String    @map("reward_amount") // Decimal as string
+  status              String    @default("calculated_pending_approval") // reward_status
+  legacyOperationKey  String?   @unique @map("legacy_operation_key")
+  approvedAt          DateTime? @map("approved_at")
+  pushedAt            DateTime? @map("pushed_at")
+  lastError           String?   @map("last_error")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  trustee  Trustee  @relation(fields: [trusteeId], references: [id])
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@map("trustee_rewards")
+}
+
+// ─── Notifications & Jobs ─────────────────────────────────────────────────────
+
+model Notification {
+  id                 String    @id @default(uuid())
+  templateKey        String    @map("template_key")
+  templateVersion    Int       @default(1) @map("template_version")
+  channel            String
+  recipientMasked    String?   @map("recipient_masked")
+  recipientEncrypted String?   @map("recipient_encrypted")
+  entityType         String    @map("entity_type")
+  entityId           String    @map("entity_id")
+  idempotencyKey     String    @unique @map("idempotency_key")
+  status             String    @default("queued") // notification_status
+  providerMessageId  String?   @map("provider_message_id")
+  payload            String    // JSON
+  attemptCount       Int       @default(0) @map("attempt_count")
+  lastError          String?   @map("last_error")
+  sentAt             DateTime? @map("sent_at")
+  deliveredAt        DateTime? @map("delivered_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("notifications")
+}
+
+model IntegrationJob {
+  id                   String    @id @default(uuid())
+  jobType              String    @map("job_type")
+  logicalOperationKey  String    @map("logical_operation_key")
+  status               String    @default("pending") // job_status
+  payload              String    // JSON
+  attemptCount         Int       @default(0) @map("attempt_count")
+  maxAttempts          Int       @default(8) @map("max_attempts")
+  runAfter             DateTime  @default(now()) @map("run_after")
+  lockedAt             DateTime? @map("locked_at")
+  lockedBy             String?   @map("locked_by")
+  lastErrorCode        String?   @map("last_error_code")
+  lastErrorMessage     String?   @map("last_error_message")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@unique([jobType, logicalOperationKey])
+  @@map("integration_jobs")
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  eventType     String    @map("event_type")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id")
+  payload       String    // JSON
+  status        String    @default("pending") // job_status
+  attemptCount  Int       @default(0) @map("attempt_count")
+  runAfter      DateTime  @default(now()) @map("run_after")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  processedAt   DateTime? @map("processed_at")
+
+  @@map("outbox_events")
+}
+
+// ─── Legacy Sync ──────────────────────────────────────────────────────────────
+
+model LegacySyncLog {
+  id                   String   @id @default(uuid())
+  adapterType          String   @map("adapter_type")
+  method               String
+  logicalOperationKey  String?  @map("logical_operation_key")
+  requestPayload       String?  @map("request_payload") // JSON
+  responsePayload      String?  @map("response_payload") // JSON
+  status               String   // success|warning|failure
+  durationMs           Int?     @map("duration_ms")
+  errorCode            String?  @map("error_code")
+  errorMessage         String?  @map("error_message")
+  correlationId        String?  @map("correlation_id")
+  attemptNumber        Int      @default(1) @map("attempt_number")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@map("legacy_sync_logs")
+}
+
+model MockImport {
+  id               String    @id @default(uuid())
+  datasetType      String    @map("dataset_type")
+  mediaId          String?   @map("media_id")
+  status           String    @default("pending") // job_status
+  dryRun           Boolean   @default(true) @map("dry_run")
+  rowCount         Int?      @map("row_count")
+  validRowCount    Int?      @map("valid_row_count")
+  invalidRowCount  Int?      @map("invalid_row_count")
+  validationReport String?   @map("validation_report") // JSON
+  activatedAt      DateTime? @map("activated_at")
+  createdBy        String?   @map("created_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  completedAt      DateTime? @map("completed_at")
+
+  media       MediaObject? @relation(fields: [mediaId], references: [id])
+  createdByUser User?      @relation(fields: [createdBy], references: [id])
+
+  @@map("mock_imports")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorType   String   @map("actor_type")
+  actorId     String?  @map("actor_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  beforeData  String?  @map("before_data") // JSON
+  afterData   String?  @map("after_data")  // JSON
+  reason      String?
+  correlationId String? @map("correlation_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}

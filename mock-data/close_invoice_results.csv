@@ -1,0 +1,4 @@
+branch_code,total_open,closed_successfully,refused,still_open,can_start_count
+RAMAT_GAN,24,21,3,0,true
+TEL_AVIV,18,15,2,1,false
+HOLON,0,0,0,0,true

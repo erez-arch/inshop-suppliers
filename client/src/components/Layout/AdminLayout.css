@@ -1,0 +1,182 @@
+.admin-layout {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-areas:
+    "sidebar topbar"
+    "sidebar main";
+  min-height: 100vh;
+  transition: grid-template-columns var(--transition-normal);
+}
+
+.admin-layout--sidebar-open {
+  grid-template-columns: var(--sidebar-width) 1fr;
+}
+
+/* Sidebar */
+.admin-sidebar {
+  grid-area: sidebar;
+  background-color: #1f2937;
+  color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.admin-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-4);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  min-height: var(--topbar-height);
+}
+
+.admin-sidebar__logo { font-size: 1.5rem; flex-shrink: 0; }
+.admin-sidebar__title { font-weight: 700; font-size: var(--font-size-base); white-space: nowrap; }
+
+.admin-sidebar__nav {
+  flex: 1;
+  padding: var(--spacing-3) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  color: #d1d5db;
+  text-decoration: none;
+  border-radius: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  min-height: var(--touch-target);
+  white-space: nowrap;
+}
+
+.admin-nav-item:hover { background-color: rgba(255,255,255,0.1); color: #fff; text-decoration: none; }
+.admin-nav-item--active { background-color: var(--color-primary); color: #fff; }
+.admin-nav-item__icon { font-size: 1.2em; flex-shrink: 0; }
+
+.admin-sidebar__footer {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.admin-sidebar__user {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-sidebar__user-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-sidebar__user-role { color: #9ca3af; }
+
+.admin-sidebar__logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: #9ca3af;
+}
+
+.admin-sidebar__logout:hover { background-color: rgba(255,255,255,0.1); color: #fff; }
+
+/* Topbar */
+.admin-topbar {
+  grid-area: topbar;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-6);
+  gap: var(--spacing-4);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-topbar__toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.3rem;
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.admin-topbar__toggle:hover { background-color: var(--color-bg); }
+.admin-topbar__spacer { flex: 1; }
+
+.admin-topbar__link {
+  background-color: var(--color-primary);
+  color: #fff;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-topbar__link:hover { background-color: var(--color-primary-dark); text-decoration: none; }
+
+/* Main */
+.admin-main {
+  grid-area: main;
+  padding: var(--spacing-6);
+  overflow-y: auto;
+  background-color: var(--color-bg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-layout {
+    grid-template-columns: 0 1fr !important;
+  }
+  .admin-layout--sidebar-open {
+    grid-template-columns: var(--sidebar-width) 1fr !important;
+  }
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+  }
+  .admin-layout--sidebar-open .admin-sidebar {
+    transform: translateX(0);
+  }
+  .admin-topbar { grid-column: 1 / -1; }
+  .admin-main { grid-column: 1 / -1; }
+}

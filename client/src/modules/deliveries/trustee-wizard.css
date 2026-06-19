@@ -1,0 +1,188 @@
+/* Trustee wizard — mobile-first */
+
+.trustee-loading, .trustee-error, .trustee-done {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8);
+  text-align: center;
+  gap: var(--spacing-4);
+}
+
+.trustee-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.trustee-done__icon { font-size: 4rem; }
+.trustee-done__title { font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-success); }
+.trustee-done__sub { color: var(--color-text-secondary); }
+.trustee-done__ref { font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+
+.trustee-header {
+  padding: var(--spacing-4);
+}
+
+.trustee-header__title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  margin-bottom: var(--spacing-2);
+  text-align: center;
+}
+
+.trustee-header__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.trustee-header__ref {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.trustee-footer {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+}
+
+.trustee-step {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.trustee-step__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-bottom: var(--spacing-4);
+  color: var(--color-primary);
+}
+
+.trustee-contact-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.trustee-contact-row {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: baseline;
+  font-size: var(--font-size-sm);
+}
+
+.trustee-contact-label {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.trustee-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.trustee-line {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+}
+
+.trustee-line__name {
+  font-weight: 600;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-base);
+}
+
+.trustee-line__qty {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.trustee-line__qty-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  min-width: 90px;
+}
+
+.trustee-line__qty-val {
+  font-weight: 600;
+}
+
+.trustee-line__input {
+  width: 80px;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  text-align: center;
+  font-family: inherit;
+}
+
+.trustee-line__input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.trustee-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+
+.trustee-media-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.trustee-media-img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+}
+
+.trustee-media-placeholder {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--spacing-2);
+}
+
+.trustee-summary-table {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
