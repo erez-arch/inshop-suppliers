@@ -7,23 +7,24 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
+  section?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/admin/deliveries', label: 'אספקות',       icon: '📦' },
-  { to: '/admin/payments',   label: 'תשלומים',      icon: '💳' },
-  { to: '/admin/order-rules',label: 'חוקי הזמנה',  icon: '📋' },
-  { to: '/admin/suppliers',  label: 'ספקים',        icon: '🏭' },
-  { to: '/admin/branches',   label: 'סניפים',       icon: '🏪' },
-  { to: '/admin/items',      label: 'פריטים',       icon: '📊' },
-  { to: '/admin/trustees',   label: 'נאמנים',       icon: '👤' },
-  { to: '/admin/inventory',  label: 'מלאי',         icon: '🗂️' },
-  { to: '/portal',           label: 'פורטל ספק',   icon: '🔗' },
+  { to: '/admin/deliveries', label: 'אספקות',      icon: '📦',  section: 'ניהול' },
+  { to: '/admin/payments',   label: 'תשלומים',     icon: '💳',  section: 'ניהול' },
+  { to: '/admin/order-rules',label: 'חוקי הזמנה', icon: '📋',  section: 'ניהול' },
+  { to: '/admin/suppliers',  label: 'ספקים',       icon: '🏭',  section: 'מאסטר' },
+  { to: '/admin/branches',   label: 'סניפים',      icon: '🏪',  section: 'מאסטר' },
+  { to: '/admin/items',      label: 'פריטים',      icon: '📊',  section: 'מאסטר' },
+  { to: '/admin/trustees',   label: 'נאמנים',      icon: '👤',  section: 'מאסטר' },
+  { to: '/admin/inventory',  label: 'מלאי',        icon: '🗂️', section: 'מאסטר' },
+  { to: '/portal',           label: 'פורטל ספק',  icon: '🔗',  section: 'קישורים' },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
   '/admin/deliveries':  'אספקות',
-  '/admin/payments':    'תשלומים',
+  '/admin/payments':    'תשלומים לספקים',
   '/admin/order-rules': 'חוקי הזמנה',
   '/admin/suppliers':   'ספקים',
   '/admin/branches':    'סניפים',
@@ -65,6 +66,14 @@ export function AdminLayout({ user, onLogout }: AdminLayoutProps) {
     .slice(0, 2)
     .toUpperCase();
 
+  // Group nav items by section
+  const sections = NAV_ITEMS.reduce<Record<string, NavItem[]>>((acc, item) => {
+    const key = item.section ?? '';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
   return (
     <div
       className={`admin-layout ${sidebarOpen ? 'admin-layout--sidebar-open' : 'admin-layout--collapsed'}`}
@@ -93,22 +102,29 @@ export function AdminLayout({ user, onLogout }: AdminLayoutProps) {
 
         {/* Nav */}
         <nav className="admin-sidebar__nav">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `admin-nav-item ${isActive ? 'admin-nav-item--active' : ''}`
-              }
-              title={!sidebarOpen ? item.label : undefined}
-            >
-              <span className="admin-nav-item__icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              {sidebarOpen && (
-                <span className="admin-nav-item__label">{item.label}</span>
+          {Object.entries(sections).map(([sectionName, items]) => (
+            <div key={sectionName} className="admin-nav-section">
+              {sidebarOpen && sectionName && (
+                <div className="admin-nav-section__label">{sectionName}</div>
               )}
-            </NavLink>
+              {items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `admin-nav-item ${isActive ? 'admin-nav-item--active' : ''}`
+                  }
+                  title={!sidebarOpen ? item.label : undefined}
+                >
+                  <span className="admin-nav-item__icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  {sidebarOpen && (
+                    <span className="admin-nav-item__label">{item.label}</span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
@@ -150,14 +166,14 @@ export function AdminLayout({ user, onLogout }: AdminLayoutProps) {
           aria-label="פתח/סגור תפריט"
           aria-expanded={sidebarOpen}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="3" y1="6" x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
 
-        <span className="admin-topbar__page-title">{pageTitle}</span>
+        <h1 className="admin-topbar__page-title">{pageTitle}</h1>
 
         <div className="admin-topbar__actions">
           <NavLink
@@ -174,6 +190,20 @@ export function AdminLayout({ user, onLogout }: AdminLayoutProps) {
             <div className="admin-topbar__user-avatar">{initials}</div>
             <span className="admin-topbar__user-name">{user.displayName}</span>
           </div>
+
+          <button
+            className="admin-topbar__logout-btn"
+            onClick={handleLogout}
+            aria-label="התנתק מהמערכת"
+            title="התנתק"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span className="admin-topbar__logout-label">יציאה</span>
+          </button>
         </div>
       </header>
 

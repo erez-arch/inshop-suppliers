@@ -29,75 +29,112 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="login-page">
-      <div className="login-card" role="main">
-        {/* Brand header */}
-        <div className="login-header">
-          <div className="login-brand-mark" aria-hidden="true">🏪</div>
-          <h1 className="login-title">INSHOP</h1>
-          <p className="login-subtitle">מערכת ניהול ספקים ומלאי</p>
+      {/* ── Brand Panel ─────────────────────────────────────── */}
+      <div className="login-brand-panel">
+        <div className="login-brand-panel__circles" aria-hidden="true">
+          <div className="login-brand-panel__circle login-brand-panel__circle--1" />
+          <div className="login-brand-panel__circle login-brand-panel__circle--2" />
+          <div className="login-brand-panel__circle login-brand-panel__circle--3" />
         </div>
 
-        <div className="login-divider" role="separator" />
-
-        {/* Error */}
-        {error && (
-          <div className="login-error" role="alert" aria-live="assertive">
-            <span className="login-error__icon">⚠️</span>
-            <span>{error}</span>
+        <div className="login-brand-content">
+          <div className="login-brand-logo" aria-hidden="true">
+            <span>IS</span>
           </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} noValidate className="login-form">
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">דואר אלקטרוני</label>
-            <input
-              id="email"
-              type="email"
-              className="form-input"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              placeholder="admin@inshop.local"
-              required
-              disabled={loading}
-            />
+          <h1 className="login-brand-title">INSHOP</h1>
+          <p className="login-brand-tagline">
+            מערכת ניהול ספקים ומלאי לרשתות קמעונאיות
+          </p>
+          <div className="login-brand-features">
+            <div className="login-brand-feature">
+              <div className="login-brand-feature-dot" aria-hidden="true" />
+              <span>ניהול אספקות וחשבוניות בזמן אמת</span>
+            </div>
+            <div className="login-brand-feature">
+              <div className="login-brand-feature-dot" aria-hidden="true" />
+              <span>השוואת חשבוניות בעזרת בינה מלאכותית</span>
+            </div>
+            <div className="login-brand-feature">
+              <div className="login-brand-feature-dot" aria-hidden="true" />
+              <span>ניהול מלאי ותשלומים לספקים</span>
+            </div>
           </div>
+        </div>
+      </div>
 
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">סיסמה</label>
-            <input
-              id="password"
-              type="password"
-              className="form-input"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              required
-              disabled={loading}
-            />
+      {/* ── Form Panel ──────────────────────────────────────── */}
+      <div className="login-form-panel">
+        <div className="login-card" role="main">
+          {/* Header */}
+          <div className="login-header">
+            <h2 className="login-welcome">ברוך הבא</h2>
+            <p className="login-subtitle">מערכת ניהול ספקים ומלאי — INSHOP</p>
           </div>
 
-          <button
-            type="submit"
-            className="login-submit"
-            disabled={loading || !email || !password}
-          >
-            {loading ? (
-              <>
-                <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                מתחבר...
-              </>
-            ) : (
-              'כניסה למערכת'
-            )}
-          </button>
-        </form>
+          <div className="login-divider" role="separator" />
 
-        {/* Dev hint */}
-        <div className="login-hint" aria-label="פרטי כניסה לפיתוח">
-          admin@inshop.local / admin123
+          {/* Error */}
+          {error && (
+            <div className="login-error" role="alert" aria-live="assertive">
+              <span className="login-error__icon">⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} noValidate className="login-form">
+            <div className="form-group">
+              <label htmlFor="email" className="form-label">דואר אלקטרוני</label>
+              <input
+                id="email"
+                type="email"
+                className="form-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="admin@inshop.local"
+                required
+                disabled={loading}
+                dir="ltr"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password" className="form-label">סיסמה</label>
+              <input
+                id="password"
+                type="password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                required
+                disabled={loading}
+                dir="ltr"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="login-submit"
+              disabled={loading || !email || !password}
+            >
+              {loading ? (
+                <>
+                  <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                  מתחבר...
+                </>
+              ) : (
+                'כניסה למערכת'
+              )}
+            </button>
+          </form>
+
+          {/* Dev hint */}
+          <div className="login-hint" aria-label="פרטי כניסה לפיתוח">
+            admin@inshop.local / admin123
+          </div>
         </div>
       </div>
     </div>

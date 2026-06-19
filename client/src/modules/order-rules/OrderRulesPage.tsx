@@ -3,8 +3,10 @@ import * as api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { Dialog } from '../../components/ui/Dialog';
+import './order-rules.css';
 
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const DAYS_SHORT = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
 
 export default function OrderRulesPage() {
   const [rules, setRules] = useState<api.OrderRule[]>([]);
@@ -66,60 +68,87 @@ export default function OrderRulesPage() {
     return true;
   });
 
-  function parseDays(str: string): string {
-    try {
-      const days: number[] = JSON.parse(str);
-      return days.map((d) => DAYS_HE[d]).join(', ');
-    } catch {
-      return str;
-    }
+  function parseDaysArray(str: string): number[] {
+    try { return JSON.parse(str); } catch { return []; }
   }
+
+  function parseDays(str: string): string {
+    const days = parseDaysArray(str);
+    return days.map((d) => DAYS_HE[d]).join(', ') || '—';
+  }
+
+  function renderDayPills(str: string) {
+    const activeDays = parseDaysArray(str);
+    return (
+      <div className="or-day-pills">
+        {DAYS_SHORT.map((day, i) => (
+          <span
+            key={i}
+            className={`or-day-pill ${activeDays.includes(i) ? 'or-day-pill--active' : ''}`}
+          >
+            {day}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  const hasFilters = !!(filterBranch || filterSupplier);
 
   return (
     <div>
-      {/* Page header */}
+      {/* ── Page Header ─────────────────────────────────────── */}
       <div className="page-header">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <h1 className="page-header__title">חוקי הזמנה</h1>
-          <p className="page-header__sub">
-            {loading ? 'טוען...' : `${filtered.length} כללים`}
-          </p>
+          {!loading && <span className="or-count-badge">{filtered.length}</span>}
         </div>
         <div className="page-header__actions">
           <Button variant="primary" onClick={() => setShowCreate(true)}>+ הוסף כלל</Button>
         </div>
       </div>
 
-      {/* Error */}
+      {/* ── Error ───────────────────────────────────────────── */}
       {error && (
-        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem' }}>
-          ⚠️ {error}
-          <button onClick={() => setError('')} style={{ marginRight: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
+        <div className="or-error-banner" role="alert">
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError('')} className="or-error-close">✕</button>
         </div>
       )}
 
-      {/* Filter bar */}
+      {/* ── Filter Bar ──────────────────────────────────────── */}
       <div className="filter-bar">
         <label className="filter-bar__label">סניף:</label>
         <select value={filterBranch} onChange={(e) => setFilterBranch(e.target.value)}>
           <option value="">כל הסניפים</option>
           {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
+
         <label className="filter-bar__label">ספק:</label>
         <select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)}>
           <option value="">כל הספקים</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        {(filterBranch || filterSupplier) && (
-          <button onClick={() => { setFilterBranch(''); setFilterSupplier(''); }}
-            style={{ background: 'none', border: 'none', color: 'var(--color-muted)', cursor: 'pointer', fontSize: 'var(--font-size-sm)', padding: '0 0.25rem', minHeight: 'auto', minWidth: 'auto' }}>
-            נקה ✕
+
+        {hasFilters && (
+          <button
+            onClick={() => { setFilterBranch(''); setFilterSupplier(''); }}
+            className="or-clear-btn"
+          >
+            נקה סינון
           </button>
         )}
       </div>
 
-      {/* Table card */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      {/* ── Rules Table Card ────────────────────────────────── */}
+      <div className="card or-table-card">
+        <div className="card__header">
+          <span className="card__title">כללי הזמנה</span>
+          {!loading && filtered.length > 0 && (
+            <span className="or-count-badge">{filtered.length}</span>
+          )}
+        </div>
+
         {loading ? (
           <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
             <div className="spinner" style={{ width: 32, height: 32 }} />
@@ -129,8 +158,14 @@ export default function OrderRulesPage() {
           <div className="empty-state">
             <span className="empty-state__icon">📋</span>
             <span className="empty-state__title">אין כללי הזמנה</span>
-            <span className="empty-state__sub">הוסף כלל הזמנה ראשון</span>
-            <Button variant="primary" onClick={() => setShowCreate(true)} style={{ marginTop: '0.75rem' }}>+ הוסף כלל</Button>
+            <span className="empty-state__sub">
+              {hasFilters ? 'נסה לשנות את הסינון' : 'הוסף כלל הזמנה ראשון'}
+            </span>
+            {!hasFilters && (
+              <Button variant="primary" onClick={() => setShowCreate(true)} style={{ marginTop: '1rem' }}>
+                + הוסף כלל
+              </Button>
+            )}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -148,14 +183,19 @@ export default function OrderRulesPage() {
               </thead>
               <tbody>
                 {filtered.map((r) => (
-                  <tr key={r.id} onClick={() => setSelectedRule(r)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelectedRule(r)}>
-                    <td style={{ fontWeight: 500 }}>{r.branch?.name ?? r.branchId}</td>
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelectedRule(r)}
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && setSelectedRule(r)}
+                  >
+                    <td className="or-branch-name">{r.branch?.name ?? r.branchId}</td>
                     <td>{r.supplier?.name ?? r.supplierId}</td>
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
-                      {parseDays(r.deliveryWeekdays) || '—'}
+                    <td>
+                      {renderDayPills(r.deliveryWeekdays)}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      {r.averageLeadTimeDays ?? '—'} ימים
+                      <span className="or-lead-time">{r.averageLeadTimeDays ?? '—'} ימים</span>
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>
                       ₪{r.minimumOrderAmount}
@@ -180,7 +220,7 @@ export default function OrderRulesPage() {
         )}
       </div>
 
-      {/* Create dialog */}
+      {/* ── Create Dialog ───────────────────────────────────── */}
       <Dialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
@@ -188,7 +228,12 @@ export default function OrderRulesPage() {
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setShowCreate(false)}>ביטול</Button>
-            <Button variant="primary" onClick={handleCreate} loading={saving} disabled={!form.branchId || !form.supplierId}>
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              loading={saving}
+              disabled={!form.branchId || !form.supplierId}
+            >
               צור כלל
             </Button>
           </div>
@@ -196,40 +241,34 @@ export default function OrderRulesPage() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
           <div className="form-group">
-            <label className="form-label">סניף</label>
-            <select value={form.branchId} onChange={(e) => setForm((p) => ({ ...p, branchId: e.target.value }))} className="form-input">
+            <label className="form-label">סניף <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
+            <select
+              value={form.branchId}
+              onChange={(e) => setForm((p) => ({ ...p, branchId: e.target.value }))}
+              className="form-input"
+            >
               <option value="">-- בחר סניף --</option>
               {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">ספק</label>
-            <select value={form.supplierId} onChange={(e) => setForm((p) => ({ ...p, supplierId: e.target.value }))} className="form-input">
+            <label className="form-label">ספק <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
+            <select
+              value={form.supplierId}
+              onChange={(e) => setForm((p) => ({ ...p, supplierId: e.target.value }))}
+              className="form-input"
+            >
               <option value="">-- בחר ספק --</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">ימי אספקה</label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '0.625rem 0' }}>
+            <div className="or-day-selector">
               {DAYS_HE.map((day, i) => (
                 <label
                   key={i}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.375rem',
-                    cursor: 'pointer',
-                    padding: '0.375rem 0.75rem',
-                    border: `1.5px solid ${form.deliveryWeekdays.includes(i) ? 'var(--color-primary-600)' : 'var(--color-border-2)'}`,
-                    borderRadius: 'var(--radius-md)',
-                    background: form.deliveryWeekdays.includes(i) ? 'var(--color-primary-50)' : 'var(--color-surface)',
-                    fontSize: 'var(--font-size-sm)',
-                    fontWeight: form.deliveryWeekdays.includes(i) ? 600 : 400,
-                    color: form.deliveryWeekdays.includes(i) ? 'var(--color-primary-700)' : 'var(--color-text-2)',
-                    transition: 'all var(--transition-fast)',
-                    userSelect: 'none',
-                  }}
+                  className={`or-day-toggle ${form.deliveryWeekdays.includes(i) ? 'or-day-toggle--active' : ''}`}
                 >
                   <input
                     type="checkbox"
@@ -244,20 +283,31 @@ export default function OrderRulesPage() {
           </div>
           <div className="form-group">
             <label className="form-label">זמן אספקה ממוצע (ימים)</label>
-            <input type="number" min={1} value={form.averageLeadTimeDays}
+            <input
+              type="number"
+              min={1}
+              value={form.averageLeadTimeDays}
               onChange={(e) => setForm((p) => ({ ...p, averageLeadTimeDays: Number(e.target.value) }))}
-              className="form-input" dir="ltr" />
+              className="form-input"
+              dir="ltr"
+            />
           </div>
           <div className="form-group">
             <label className="form-label">מינימום הזמנה (₪)</label>
-            <input type="number" min={0} step="0.01" value={form.minimumOrderAmount}
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.minimumOrderAmount}
               onChange={(e) => setForm((p) => ({ ...p, minimumOrderAmount: e.target.value }))}
-              className="form-input" dir="ltr" />
+              className="form-input"
+              dir="ltr"
+            />
           </div>
         </div>
       </Dialog>
 
-      {/* Rule detail dialog */}
+      {/* ── Rule Detail Dialog ───────────────────────────────── */}
       {selectedRule && (
         <Dialog
           open={!!selectedRule}
@@ -265,29 +315,29 @@ export default function OrderRulesPage() {
           title={`${selectedRule.branch?.name ?? ''} — ${selectedRule.supplier?.name ?? ''}`}
           size="lg"
           actions={
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', alignItems: 'center' }}>
               <StatusChip status={selectedRule.status} />
               <Button variant="secondary" onClick={() => setSelectedRule(null)}>סגור</Button>
             </div>
           }
         >
           {/* Rule summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem', marginBottom: '1.25rem', padding: '1rem', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)' }}>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>ימי אספקה</div>
-              <div style={{ fontWeight: 600 }}>{parseDays(selectedRule.deliveryWeekdays) || '—'}</div>
+          <div className="or-rule-summary">
+            <div className="or-rule-summary__item">
+              <div className="or-rule-summary__label">ימי אספקה</div>
+              <div className="or-rule-summary__value">{parseDays(selectedRule.deliveryWeekdays)}</div>
             </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>זמן ממוצע</div>
-              <div style={{ fontWeight: 600 }}>{selectedRule.averageLeadTimeDays} ימים</div>
+            <div className="or-rule-summary__item">
+              <div className="or-rule-summary__label">זמן ממוצע</div>
+              <div className="or-rule-summary__value">{selectedRule.averageLeadTimeDays} ימים</div>
             </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>מינימום הזמנה</div>
-              <div style={{ fontWeight: 600 }}>₪{selectedRule.minimumOrderAmount}</div>
+            <div className="or-rule-summary__item">
+              <div className="or-rule-summary__label">מינימום הזמנה</div>
+              <div className="or-rule-summary__value">₪{selectedRule.minimumOrderAmount}</div>
             </div>
           </div>
 
-          <h4 style={{ marginBottom: '0.75rem', fontSize: 'var(--font-size-base)', fontWeight: 700 }}>
+          <h4 className="or-items-title">
             פריטים ({selectedRule.items?.length ?? 0})
           </h4>
           {selectedRule.items && selectedRule.items.length > 0 ? (

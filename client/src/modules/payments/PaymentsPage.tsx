@@ -3,6 +3,7 @@ import * as api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import { StatusChip } from '../../components/ui/StatusChip';
 import { Dialog } from '../../components/ui/Dialog';
+import './payments.css';
 
 const METHOD_LABELS: Record<string, string> = {
   bank_transfer: 'העברה בנקאית',
@@ -18,12 +19,32 @@ const LEDGER_TYPE_LABELS: Record<string, string> = {
   adjustment: 'תיקון',
 };
 
+function formatDate(iso?: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function SkeletonRow({ cols }: { cols: number }) {
+  return (
+    <tr>
+      {Array.from({ length: cols }).map((_, i) => (
+        <td key={i} style={{ padding: '14px 16px' }}>
+          <div className="skeleton" style={{ height: 14, borderRadius: 'var(--radius-sm)' }} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<api.Payment[]>([]);
   const [suppliers, setSuppliers] = useState<api.Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [ledger, setLedger] = useState<{ entries: api.LedgerEntry[]; balance: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
@@ -47,7 +68,11 @@ export default function PaymentsPage() {
   useEffect(loadPayments, [selectedSupplier]);
   useEffect(() => {
     if (selectedSupplier) {
-      api.payments.ledger(selectedSupplier).then(setLedger).catch(() => {});
+      setLedgerLoading(true);
+      api.payments.ledger(selectedSupplier)
+        .then(setLedger)
+        .catch(() => {})
+        .finally(() => setLedgerLoading(false));
     } else {
       setLedger(null);
     }
@@ -97,10 +122,11 @@ export default function PaymentsPage() {
   };
 
   const balanceNum = ledger ? parseFloat(ledger.balance) : 0;
+  const selectedSupplierObj = suppliers.find((s) => s.id === selectedSupplier);
 
   return (
     <div>
-      {/* Page header */}
+      {/* ── Page Header ─────────────────────────────────────── */}
       <div className="page-header">
         <div>
           <h1 className="page-header__title">תשלומים לספקים</h1>
@@ -115,105 +141,156 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* Error */}
+      {/* ── Error ───────────────────────────────────────────── */}
       {error && (
-        <div style={{ padding: '0.875rem 1rem', background: 'var(--color-danger-100)', border: '1px solid rgba(220,56,56,.2)', borderRadius: 'var(--radius-md)', color: 'var(--color-danger-700)', fontSize: 'var(--font-size-sm)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          ⚠️ {error}
-          <button onClick={() => setError('')} style={{ marginRight: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, color: 'inherit', minHeight: 'auto', minWidth: 'auto' }}>✕</button>
+        <div className="pay-error-banner" role="alert">
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError('')} className="pay-error-close">✕</button>
         </div>
       )}
 
-      {/* Filter */}
+      {/* ── Supplier Filter ──────────────────────────────────── */}
       <div className="filter-bar" style={{ marginBottom: '1.25rem' }}>
         <label className="filter-bar__label">ספק:</label>
         <select
           value={selectedSupplier}
           onChange={(e) => setSelectedSupplier(e.target.value)}
+          style={{ flex: 1, maxWidth: 320 }}
         >
           <option value="">כל הספקים</option>
           {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
+        {selectedSupplier && (
+          <button
+            onClick={() => setSelectedSupplier('')}
+            className="pay-clear-btn"
+          >
+            נקה
+          </button>
+        )}
       </div>
 
-      {/* Ledger balance card */}
-      {ledger && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      {/* ── Balance + Ledger Row ─────────────────────────────── */}
+      {selectedSupplier && (
+        <div className="pay-ledger-row">
           {/* Balance KPI */}
-          <div className="card">
+          <div className="card pay-balance-card">
             <div className="card__header">
               <h3 className="card__title">💰 יתרת חשבון</h3>
+              {selectedSupplierObj && (
+                <span className="pay-supplier-name">{selectedSupplierObj.name}</span>
+              )}
             </div>
-            <div className="card__body" style={{ textAlign: 'center' }}>
-              <div style={{
-                fontSize: '2.25rem',
-                fontWeight: 800,
-                color: balanceNum > 0 ? 'var(--color-danger-600)' : balanceNum < 0 ? 'var(--color-success-600)' : 'var(--color-text)',
-                lineHeight: 1,
-                marginBottom: '0.375rem',
-              }}>
-                ₪{Math.abs(balanceNum).toFixed(2)}
-              </div>
-              <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-muted)' }}>
-                {balanceNum > 0 ? 'לתשלום לספק' : balanceNum < 0 ? 'יתרת זכות' : 'מאוזן'}
-              </div>
+            <div className="card__body">
+              {ledgerLoading ? (
+                <div className="pay-balance-loading">
+                  <div className="spinner" style={{ width: 24, height: 24 }} />
+                </div>
+              ) : ledger ? (
+                <div className="pay-balance-content">
+                  <div
+                    className="pay-balance-value"
+                    style={{
+                      color: balanceNum > 0 ? 'var(--color-danger-600)'
+                        : balanceNum < 0 ? 'var(--color-success-600)'
+                        : 'var(--color-text)',
+                    }}
+                  >
+                    ₪{Math.abs(balanceNum).toLocaleString('he-IL', { minimumFractionDigits: 2 })}
+                  </div>
+                  <div className="pay-balance-label">
+                    {balanceNum > 0 ? 'לתשלום לספק' : balanceNum < 0 ? 'יתרת זכות' : 'מאוזן'}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--color-muted)', fontSize: 'var(--font-size-sm)', textAlign: 'center' }}>
+                  לא נמצאו נתוני ספר חשבונות
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Ledger entries */}
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div className="card__header">
-              <h3 className="card__title">📒 תנועות חשבון</h3>
+          {/* Ledger Entries */}
+          {ledger && ledger.entries.length > 0 && (
+            <div className="card pay-ledger-card">
+              <div className="card__header">
+                <h3 className="card__title">📒 תנועות חשבון</h3>
+                <span className="pay-ledger-count">{ledger.entries.length} תנועות</span>
+              </div>
+              <div className="pay-ledger-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>סוג</th>
+                      <th style={{ textAlign: 'center' }}>סכום</th>
+                      <th>תאריך</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledger.entries.map((e) => {
+                      const amount = parseFloat(e.amountSigned);
+                      return (
+                        <tr key={e.id}>
+                          <td>
+                            <span className={`badge ${amount < 0 ? 'badge-green' : 'badge-red'}`}>
+                              {LEDGER_TYPE_LABELS[e.entryType] ?? e.entryType}
+                            </span>
+                          </td>
+                          <td style={{
+                            textAlign: 'center',
+                            fontWeight: 700,
+                            color: amount < 0 ? 'var(--color-success-700)' : 'var(--color-danger-700)',
+                          }}>
+                            {amount < 0 ? '-' : '+'}₪{Math.abs(amount).toFixed(2)}
+                          </td>
+                          <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
+                            {formatDate(e.occurredAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div style={{ overflowX: 'auto', maxHeight: '280px', overflowY: 'auto' }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>סוג</th>
-                    <th style={{ textAlign: 'center' }}>סכום</th>
-                    <th>תאריך</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.entries.map((e) => {
-                    const amount = parseFloat(e.amountSigned);
-                    return (
-                      <tr key={e.id}>
-                        <td>
-                          <span className={`badge ${amount < 0 ? 'badge-green' : 'badge-red'}`}>
-                            {LEDGER_TYPE_LABELS[e.entryType] ?? e.entryType}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: amount < 0 ? 'var(--color-success-700)' : 'var(--color-danger-700)' }}>
-                          {amount < 0 ? '-' : '+'}₪{Math.abs(amount).toFixed(2)}
-                        </td>
-                        <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
-                          {new Date(e.occurredAt).toLocaleDateString('he-IL')}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Payments table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      {/* ── Payments Table ───────────────────────────────────── */}
+      <div className="card pay-table-card">
         <div className="card__header">
           <h3 className="card__title">רשימת תשלומים</h3>
+          {!loading && payments.length > 0 && (
+            <span className="pay-count-badge">{payments.length}</span>
+          )}
         </div>
+
         {loading ? (
-          <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', color: 'var(--color-muted)' }}>
-            <div className="spinner" style={{ width: 32, height: 32 }} />
-            <span style={{ fontSize: 'var(--font-size-sm)' }}>טוען תשלומים...</span>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>מספר תשלום</th><th>ספק</th><th>סכום צפוי</th>
+                  <th>סכום מאושר</th><th>אמצעי</th><th>תאריך</th>
+                  <th>סטטוס</th><th>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cols={8} />)}
+              </tbody>
+            </table>
           </div>
         ) : payments.length === 0 ? (
           <div className="empty-state">
             <span className="empty-state__icon">💳</span>
             <span className="empty-state__title">אין תשלומים</span>
-            <span className="empty-state__sub">צור תשלום חדש כדי להתחיל</span>
+            <span className="empty-state__sub">
+              {selectedSupplier ? 'לא נמצאו תשלומים לספק זה' : 'צור תשלום חדש כדי להתחיל'}
+            </span>
+            <Button variant="primary" onClick={() => setShowCreate(true)} style={{ marginTop: '1rem' }}>
+              + תשלום חדש
+            </Button>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -224,7 +301,7 @@ export default function PaymentsPage() {
                   <th>ספק</th>
                   <th style={{ textAlign: 'center' }}>סכום צפוי</th>
                   <th style={{ textAlign: 'center' }}>סכום מאושר</th>
-                  <th>אמצעי</th>
+                  <th>אמצעי תשלום</th>
                   <th>תאריך</th>
                   <th style={{ textAlign: 'center' }}>סטטוס</th>
                   <th style={{ textAlign: 'center' }}>פעולות</th>
@@ -234,18 +311,18 @@ export default function PaymentsPage() {
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td>
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.875rem', color: 'var(--color-primary-700)' }} dir="ltr">
-                        {p.reference}
-                      </span>
+                      <span className="pay-ref" dir="ltr">{p.reference}</span>
                     </td>
-                    <td style={{ fontWeight: 500 }}>{p.supplier?.name ?? p.supplierId}</td>
+                    <td className="pay-supplier">{p.supplier?.name ?? p.supplierId}</td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>₪{p.expectedAmount}</td>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>₪{p.confirmedAmount}</td>
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
-                      {METHOD_LABELS[p.method ?? ''] ?? p.method ?? '—'}
+                    <td>
+                      <span className="pay-method">
+                        {METHOD_LABELS[p.method ?? ''] ?? p.method ?? '—'}
+                      </span>
                     </td>
                     <td style={{ color: 'var(--color-muted)', fontSize: '0.875rem' }}>
-                      {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('he-IL') : '—'}
+                      {formatDate(p.paymentDate)}
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <StatusChip status={p.status} />
@@ -282,7 +359,7 @@ export default function PaymentsPage() {
         )}
       </div>
 
-      {/* Create payment dialog */}
+      {/* ── Create Payment Dialog ────────────────────────────── */}
       <Dialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
@@ -290,7 +367,12 @@ export default function PaymentsPage() {
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
             <Button variant="secondary" onClick={() => setShowCreate(false)}>ביטול</Button>
-            <Button variant="primary" onClick={handleCreate} loading={saving} disabled={!form.supplierId || !form.expectedAmount}>
+            <Button
+              variant="primary"
+              onClick={handleCreate}
+              loading={saving}
+              disabled={!form.supplierId || !form.expectedAmount}
+            >
               צור תשלום
             </Button>
           </div>
@@ -298,7 +380,7 @@ export default function PaymentsPage() {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
           <div className="form-group">
-            <label className="form-label">ספק</label>
+            <label className="form-label">ספק <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
             <select
               value={form.supplierId}
               onChange={(e) => setForm((p) => ({ ...p, supplierId: e.target.value }))}
@@ -309,7 +391,7 @@ export default function PaymentsPage() {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">סכום צפוי (₪)</label>
+            <label className="form-label">סכום צפוי (₪) <span style={{ color: 'var(--color-danger-600)' }}>*</span></label>
             <input
               type="number"
               min={0}
@@ -318,6 +400,7 @@ export default function PaymentsPage() {
               onChange={(e) => setForm((p) => ({ ...p, expectedAmount: e.target.value }))}
               className="form-input"
               dir="ltr"
+              placeholder="0.00"
             />
           </div>
           <div className="form-group">

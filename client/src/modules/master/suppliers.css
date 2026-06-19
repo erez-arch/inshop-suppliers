@@ -1,0 +1,137 @@
+/* =====================================================================
+   Suppliers Page — Production SaaS
+   ===================================================================== */
+
+/* ── Status Badges ──────────────────────────────────────────────── */
+.sup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.sup-badge--active {
+  background: var(--color-success-100);
+  color: var(--color-success-700);
+}
+
+.sup-badge--inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.sup-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sup-badge--active .sup-badge__dot {
+  background: var(--color-success-700);
+}
+
+.sup-badge--inactive .sup-badge__dot {
+  background: #9ca3af;
+}
+
+/* ── Count badge ────────────────────────────────────────────────── */
+.sup-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-2);
+}
+
+/* ── Table helpers ──────────────────────────────────────────────── */
+.sup-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  background: var(--color-surface-2);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.sup-name {
+  font-weight: 600;
+}
+
+.sup-table-card {
+  overflow: hidden;
+}
+
+/* ── Error banner ───────────────────────────────────────────────── */
+.sup-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: var(--color-danger-100);
+  border: 1px solid rgba(220,56,56,.2);
+  border-radius: var(--radius-md);
+  color: var(--color-danger-700);
+  font-size: var(--font-size-sm);
+  margin-bottom: 1rem;
+}
+
+.sup-error-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 700;
+  min-height: auto;
+  min-width: auto;
+  padding: 0;
+}
+
+/* ── Clear button ───────────────────────────────────────────────── */
+.sup-clear-btn {
+  background: none;
+  border: 1.5px solid var(--color-border-2);
+  border-radius: var(--radius-md);
+  color: var(--color-muted);
+  font-size: var(--font-size-sm);
+  padding: 0.375rem 0.875rem;
+  cursor: pointer;
+  min-height: auto;
+  min-width: auto;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.sup-clear-btn:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+}
+
+/* ── Form error messages ────────────────────────────────────────── */
+.sup-field-error {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger-600);
+  display: block;
+  margin-top: 2px;
+}
+
+.form-input--error {
+  border-color: var(--color-danger-600) !important;
+}
+
+.form-input--error:focus {
+  box-shadow: 0 0 0 3px rgba(196,50,50,0.15) !important;
+}
