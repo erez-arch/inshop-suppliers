@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import prisma from '@/lib/prisma'
+import { ClaudeInvoiceParserAdapter } from '@/adapters/invoice-parser/ClaudeInvoiceParserAdapter'
 import { MockInvoiceParserAdapter } from '@/adapters/invoice-parser/MockInvoiceParserAdapter'
 import { Decimal } from '@prisma/client/runtime/library'
 
-const parser = new MockInvoiceParserAdapter()
+const parser = process.env.ANTHROPIC_API_KEY
+  ? new ClaudeInvoiceParserAdapter()
+  : new MockInvoiceParserAdapter()
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData()

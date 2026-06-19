@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 type Step = 'upload' | 'branch' | 'photos' | 'contact' | 'done'
 
@@ -21,7 +21,6 @@ export default function SupplierPage() {
   const [supplierPhone, setSupplierPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/master/branches').then(r => r.json()).then(setBranches)
@@ -40,20 +39,24 @@ export default function SupplierPage() {
     setDeliveryId(did)
 
     // Upload invoice for AI parsing
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('photoType', 'supplier_invoice')
-    fd.append('deliveryId', did)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    if (!res.ok) { setErr('שגיאה בהעלאת החשבונית'); setLoading(false); return }
-    const data = await res.json()
-    const pr = data.parsedResult as ParsedResult
-    setParsedResult(pr)
-
-    // Auto-select branch from AI
-    if (pr?.branchCode) {
-      const matched = branches.find(b => b.code === pr.branchCode)
-      if (matched) setBranchId(matched.id)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('photoType', 'supplier_invoice')
+      fd.append('deliveryId', did)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      if (res.ok) {
+        const data = await res.json()
+        const pr = data.parsedResult as ParsedResult
+        setParsedResult(pr)
+        if (pr?.branchCode) {
+          const matched = branches.find(b => b.code === pr.branchCode)
+          if (matched) setBranchId(matched.id)
+        }
+      }
+      // Even if upload failed, allow user to continue manually
+    } catch {
+      // Network error — continue without AI result
     }
     setStep('branch')
     setLoading(false)
@@ -148,15 +151,15 @@ export default function SupplierPage() {
           <div className="card mt-4">
             <h2 className="font-bold text-lg mb-1">העלאת חשבונית</h2>
             <p className="text-sm text-gray-500 mb-4">צלם או העלה את החשבונית שקיבלת</p>
-            <div
-              className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors"
-              onClick={() => fileRef.current?.click()}
+            <label
+              htmlFor="invoice-file-input"
+              className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors block"
             >
               <div className="text-4xl mb-2">📷</div>
               <div className="font-medium text-purple-700">לחץ לצילום / העלאה</div>
               <div className="text-xs text-gray-400 mt-1">JPG, PNG, PDF</div>
-            </div>
-            <input ref={fileRef} type="file" accept="image/*,.pdf" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f) }} />
+            </label>
+            <input id="invoice-file-input" type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f) }} />
             {loading && <div className="text-center mt-4 text-purple-600 text-sm">מעבד חשבונית עם AI...</div>}
           </div>
         )}
@@ -206,20 +209,9 @@ export default function SupplierPage() {
           <div className="card mt-4">
             <h2 className="font-bold text-lg mb-1">תמונות סחורה</h2>
             <p className="text-sm text-gray-500 mb-4">צלם את הסחורה שהגיעה (אופציונלי)</p>
-            <div
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${photoFiles.length > 0 ? 'border-green-400 bg-green-50' : 'border-purple-300 hover:border-purple-500 hover:bg-purple-50'}`}
-              onClick={() => {
-                const input = document.createElement('input')
-                input.type = 'file'
-                input.accept = 'image/*'
-                input.capture = 'environment'
-                input.multiple = true
-                input.onchange = e => {
-                  const files = Array.from((e.target as HTMLInputElement).files || [])
-                  files.forEach(f => handlePhotoAdd(f, 'goods'))
-                }
-                input.click()
-              }}
+            <label
+              htmlFor="goods-photo-input"
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors block ${photoFiles.length > 0 ? 'border-green-400 bg-green-50' : 'border-purple-300 hover:border-purple-500 hover:bg-purple-50'}`}
             >
               {photoFiles.length > 0 ? (
                 <>
@@ -234,7 +226,8 @@ export default function SupplierPage() {
                   <div className="text-xs text-gray-400 mt-1">ניתן להעלות מספר תמונות</div>
                 </>
               )}
-            </div>
+            </label>
+            <input id="goods-photo-input" type="file" accept="image/*" multiple className="hidden" onChange={e => { Array.from(e.target.files || []).forEach(f => handlePhotoAdd(f, 'goods')) }} />
             {loading && <div className="text-center mt-3 text-purple-600 text-sm">מעלה...</div>}
             <div className="flex gap-3 mt-4">
               <button onClick={() => setStep('contact')} className="btn-primary flex-1">המשך →</button>

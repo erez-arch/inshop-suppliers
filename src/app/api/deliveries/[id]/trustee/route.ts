@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Notify admin
     await notificationAdapter.send({
       to: 'admin',
-      type: 'system',
+      type: 'email',
       message: `נאמן השלים קבלת אספקה ${delivery.reference} בסניף ${delivery.branch?.name || ''}`,
     })
 
