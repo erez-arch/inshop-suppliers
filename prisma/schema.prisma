@@ -1,0 +1,500 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  role         String   @default("admin") // admin | superadmin
+  createdAt    DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+model Supplier {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  name       String
+  status     String   @default("active")
+  vatId      String?
+  phone      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deliveries       Delivery[]
+  supplierItemCodes SupplierItemCode[]
+  creditRequests   CreditRequest[]
+  payments         Payment[]
+  ledgerEntries    LedgerEntry[]
+
+  @@map("suppliers")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries     Delivery[]
+  trustees       Trustee[]
+  inventoryCounts InventoryCount[]
+  inventoryItems InventoryItem[]
+  orderRules     OrderRule[]
+
+  @@map("branches")
+}
+
+model Item {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  imageUrl        String?
+  barcode         String?
+  assortmentActive Boolean @default(true)
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  supplierItemCodes    SupplierItemCode[]
+  deliveryLines        DeliveryLine[]
+  creditRequestLines   CreditRequestLine[]
+  inventoryCountLines  InventoryCountLine[]
+  inventoryMovements   InventoryMovement[]
+  inventoryItems       InventoryItem[]
+  orderRuleItems       OrderRuleItem[]
+
+  @@map("items")
+}
+
+model Trustee {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  phone     String?
+  imageUrl  String?
+  branchId  String?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  deliveries Delivery[]
+
+  @@map("trustees")
+}
+
+model SupplierItemCode {
+  id               String   @id @default(cuid())
+  supplierId       String
+  itemId           String
+  supplierItemCode String
+  supplierItemName String?
+  status           String   @default("active")
+  createdAt        DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  item     Item     @relation(fields: [itemId], references: [id])
+
+  @@unique([supplierId, supplierItemCode])
+  @@map("supplier_item_codes")
+}
+
+// Delivery statuses:
+// draft → supplier_reported → trustee_in_progress → trustee_completed → admin_review → admin_approved | credit_requested → closed
+model Delivery {
+  id               String    @id @default(cuid())
+  reference        String    @unique
+  supplierId       String?
+  branchId         String?
+  aiDetectedBranch String?
+  trusteeId        String?
+  status           String    @default("draft")
+  supplierName     String?
+  supplierPhone    String?
+  supplierNote     String?
+  invoiceNumber    String?
+  invoiceDate      String?
+  invoiceTotal     Decimal?
+  version          Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  supplierReportedAt DateTime?
+  trusteeCompletedAt DateTime?
+  adminApprovedAt   DateTime?
+  closedAt          DateTime?
+
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+  branch    Branch?   @relation(fields: [branchId], references: [id])
+  trustee   Trustee?  @relation(fields: [trusteeId], references: [id])
+
+  invoices       Invoice[]
+  deliveryLines  DeliveryLine[]
+  photos         DeliveryPhoto[]
+  creditRequest  CreditRequest?
+  auditLogs      AuditLog[]
+
+  @@map("deliveries")
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  deliveryId    String
+  source        String   // supplier | trustee
+  invoiceNumber String?
+  invoiceDate   String?
+  total         Decimal?
+  subtotal      Decimal?
+  vat           Decimal?
+  aiConfidence  Float?
+  aiRaw         String?  // JSON
+  warnings      String?  // JSON array
+  filePath      String?
+  originalName  String?
+  createdAt     DateTime @default(now())
+
+  delivery     Delivery      @relation(fields: [deliveryId], references: [id])
+  invoiceLines InvoiceLine[]
+
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id               String   @id @default(cuid())
+  invoiceId        String
+  lineNo           Int
+  rawName          String
+  supplierItemCode String?
+  itemId           String?
+  qty              Int
+  unitPrice        Decimal?
+  lineTotal        Decimal?
+  aiConfidence     Float?
+  needsMapping     Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_lines")
+}
+
+model DeliveryLine {
+  id               String   @id @default(cuid())
+  deliveryId       String
+  rawName          String
+  supplierItemCode String?
+  itemId           String?
+  qtyInvoice       Int
+  qtyReceived      Int      @default(0)
+  qtyInventory     Int      @default(0)
+  unitPrice        Decimal?
+  isMissing        Boolean  @default(false)
+  adminOverrideReason String?
+  sortOrder        Int      @default(0)
+  version          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  delivery         Delivery @relation(fields: [deliveryId], references: [id])
+  item             Item?    @relation(fields: [itemId], references: [id])
+  creditRequestLine CreditRequestLine?
+
+  @@map("delivery_lines")
+}
+
+model DeliveryPhoto {
+  id           String   @id @default(cuid())
+  deliveryId   String
+  photoType    String   // supplier_invoice | supplier_goods | trustee_invoice | trustee_goods | pantry_before | pantry_after
+  filePath     String
+  originalName String?
+  uploadedBy   String   // supplier | trustee | admin
+  createdAt    DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id])
+
+  @@map("delivery_photos")
+}
+
+// Credit statuses: requested → sent_to_supplier → supplier_uploaded → admin_approved | admin_rejected → offset_in_payment | closed
+model CreditRequest {
+  id             String    @id @default(cuid())
+  reference      String    @unique
+  deliveryId     String    @unique
+  supplierId     String
+  status         String    @default("requested")
+  requestedAmount Decimal
+  approvedAmount  Decimal?
+  rejectionReason String?
+  version        Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  sentAt         DateTime?
+  supplierUploadedAt DateTime?
+  adminReviewedAt   DateTime?
+
+  delivery         Delivery           @relation(fields: [deliveryId], references: [id])
+  supplier         Supplier           @relation(fields: [supplierId], references: [id])
+  lines            CreditRequestLine[]
+  creditInvoices   CreditInvoice[]
+
+  @@map("credit_requests")
+}
+
+model CreditRequestLine {
+  id              String  @id @default(cuid())
+  creditRequestId String
+  deliveryLineId  String  @unique
+  itemId          String?
+  rawName         String
+  qtyInvoice      Int
+  qtyReceived     Int
+  qtyShortage     Int
+  unitPrice       Decimal
+  lineAmount      Decimal
+  createdAt       DateTime @default(now())
+
+  creditRequest CreditRequest @relation(fields: [creditRequestId], references: [id])
+  deliveryLine  DeliveryLine  @relation(fields: [deliveryLineId], references: [id])
+  item          Item?         @relation(fields: [itemId], references: [id])
+
+  @@map("credit_request_lines")
+}
+
+model CreditInvoice {
+  id              String   @id @default(cuid())
+  creditRequestId String
+  creditNumber    String?
+  creditDate      String?
+  amount          Decimal?
+  supplierId      String?
+  branchCode      String?
+  relatedInvoice  String?
+  aiConfidence    Float?
+  aiRaw           String?
+  status          String   @default("uploaded") // uploaded | admin_approved | admin_rejected
+  rejectionReason String?
+  filePath        String?
+  originalName    String?
+  createdAt       DateTime @default(now())
+
+  creditRequest CreditRequest @relation(fields: [creditRequestId], references: [id])
+
+  @@map("credit_invoices")
+}
+
+// Payment statuses: draft → ready_to_pay | pending_credit → paid | partially_paid | overpaid
+model Payment {
+  id             String    @id @default(cuid())
+  reference      String    @unique
+  supplierId     String
+  status         String    @default("draft")
+  grossAmount    Decimal   @default(0)
+  creditsOffset  Decimal   @default(0)
+  netAmount      Decimal   @default(0)
+  paidAmount     Decimal   @default(0)
+  balanceAmount  Decimal   @default(0)
+  paymentMethod  String?
+  paymentDate    String?
+  proofFilePath  String?
+  proofOrigName  String?
+  notes          String?
+  version        Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  supplier       Supplier       @relation(fields: [supplierId], references: [id])
+  paymentInvoices PaymentInvoice[]
+  ledgerEntries  LedgerEntry[]
+
+  @@map("payments")
+}
+
+model PaymentInvoice {
+  id            String  @id @default(cuid())
+  paymentId     String
+  deliveryId    String
+  invoiceAmount Decimal
+  creditOffset  Decimal @default(0)
+  netPaid       Decimal
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@map("payment_invoices")
+}
+
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  supplierId  String
+  paymentId   String?
+  entryType   String   // debit | credit | payment
+  amount      Decimal
+  description String?
+  createdAt   DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  payment  Payment? @relation(fields: [paymentId], references: [id])
+
+  @@map("ledger_entries")
+}
+
+// Inventory count statuses: waiting_legacy_close → ready_to_count → in_progress → completed → locked
+model InventoryCount {
+  id           String    @id @default(cuid())
+  reference    String    @unique
+  branchId     String
+  status       String    @default("waiting_legacy_close")
+  legacyCheckResult String? // JSON
+  startedAt    DateTime?
+  completedAt  DateTime?
+  lockedAt     DateTime?
+  createdBy    String?
+  version      Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  branch Branch               @relation(fields: [branchId], references: [id])
+  lines  InventoryCountLine[]
+
+  @@map("inventory_counts")
+}
+
+model InventoryCountLine {
+  id               String   @id @default(cuid())
+  countId          String
+  itemId           String
+  balanceAtStart   Int      @default(0)
+  countedQty       Int?
+  confirmed        Boolean  @default(false)
+  version          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  count InventoryCount @relation(fields: [countId], references: [id])
+  item  Item           @relation(fields: [itemId], references: [id])
+
+  @@unique([countId, itemId])
+  @@map("inventory_count_lines")
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  branchId  String
+  itemId    String
+  qty       Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  item   Item   @relation(fields: [itemId], references: [id])
+
+  @@unique([branchId, itemId])
+  @@map("inventory_items")
+}
+
+model InventoryMovement {
+  id          String   @id @default(cuid())
+  branchId    String
+  itemId      String
+  movementType String  // received | sold | counted | adjusted
+  qtyDelta    Int
+  reference   String?
+  deliveryId  String?
+  countId     String?
+  createdAt   DateTime @default(now())
+  createdBy   String?
+
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("inventory_movements")
+}
+
+model OrderRule {
+  id                String   @id @default(cuid())
+  branchId          String
+  supplierId        String
+  status            String   @default("active")
+  deliveryWeekdays  String   @default("[]") // JSON array
+  avgLeadTimeDays   Int      @default(2)
+  minOrderAmount    Decimal  @default(0)
+  whatsappOrders    String?
+  whatsappCredits   String?
+  version           Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  branch Branch @relation(fields: [branchId], references: [id])
+  items  OrderRuleItem[]
+
+  @@unique([branchId, supplierId])
+  @@map("order_rules")
+}
+
+model OrderRuleItem {
+  id               String  @id @default(cuid())
+  orderRuleId      String
+  itemId           String
+  targetInventoryQty Int   @default(0)
+  packageQty       Int     @default(1)
+  supplierItemCode String?
+  supplierItemName String?
+
+  orderRule OrderRule @relation(fields: [orderRuleId], references: [id])
+  item      Item      @relation(fields: [itemId], references: [id])
+
+  @@map("order_rule_items")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  actorType  String   // admin | supplier | trustee | system
+  actorId    String?
+  before     String?  // JSON
+  after      String?  // JSON
+  reason     String?
+  deliveryId String?
+  createdAt  DateTime @default(now())
+
+  delivery Delivery? @relation(fields: [deliveryId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model LegacySyncLog {
+  id          String   @id @default(cuid())
+  adapter     String
+  operation   String
+  request     String?  // JSON
+  response    String?  // JSON
+  durationMs  Int?
+  status      String   // success | error
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+
+  @@map("legacy_sync_logs")
+}
+
+model SupplierItemMapping {
+  id               String   @id @default(cuid())
+  supplierId       String
+  supplierItemCode String
+  supplierItemName String?
+  itemId           String
+  mappedBy         String?
+  createdAt        DateTime @default(now())
+
+  @@unique([supplierId, supplierItemCode])
+  @@map("supplier_item_mappings")
+}

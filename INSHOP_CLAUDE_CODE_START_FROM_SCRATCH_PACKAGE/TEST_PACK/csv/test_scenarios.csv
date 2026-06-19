@@ -1,0 +1,11 @@
+﻿scenario_id,name,input_docs,expected_result
+TS-001,דיווח ספק תקין עד אישור מלאי,INV-TNV-12547,supplier_reported -> trustee_received -> admin_review -> approved_to_inventory -> closed; מלאי גדל לפי qty_received
+TS-002,חוסר באספקה ודרישת זיכוי,INV-TNV-12548 + CN-TNV-80125,credit_required 152.93 -> supplier uploads credit -> admin approves -> credit closed
+TS-003,דיסוננס סניף,"INV-TNV-12549, selected_branch=TEL_AVIV",חסימת שמירה רגילה או דרישת אישור חריג אדמין
+TS-004,פריט לא מזוהה בחשבונית,INV-STR-77821,ST-NEW-65 לא משויך; פתיחת מסך התאמת פריט ושמירת mapping לאחר אישור
+TS-005,חשבונית זיכוי בסכום שגוי,CN-TNV-80126,זיהוי סכום נמוך מהדרישה; דרישה נשארת פתוחה על יתרה 52.93
+TS-006,חשבונית זיכוי מספק שגוי,CN-STR-70005,דיסוננס ספק/חשבונית מקור; לא לאשר זיכוי
+TS-007,תשלום תקין עם קיזוז זיכוי,PAY-BANK-33001,חשבוניות INV-TNV-12547/12548 מסומנות paid אחרי קיזוז CN-TNV-80125
+TS-008,תשלום חסר,PAY-BANK-33002,partially_paid; יתרה 725.39
+TS-009,תשלום יתר,PAY-BANK-33003,overpaid; יתרת זכות 274.61
+TS-010,ספירת מלאי חסומה,close_invoice_results TEL_AVIV,לא ניתן להתחיל ספירה כאשר can_start_count=false

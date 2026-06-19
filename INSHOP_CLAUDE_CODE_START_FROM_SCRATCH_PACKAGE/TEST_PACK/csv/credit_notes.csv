@@ -1,0 +1,4 @@
+﻿credit_number,supplier_code,branch_code,date,related_invoice,amount,status_expected,pdf_url,image_url,expected
+CN-TNV-80125,TNUVA,RAMAT_GAN,2026-06-20,INV-TNV-12548,152.93,valid_exact,pdf/CN-TNV-80125.pdf,jpg/CN-TNV-80125.jpg,זיכוי תקין; מעבר לאישור אדמין וסגירת דרישת הזיכוי
+CN-TNV-80126,TNUVA,RAMAT_GAN,2026-06-20,INV-TNV-12548,100.0,wrong_amount,pdf/CN-TNV-80126.pdf,jpg/CN-TNV-80126.jpg,זיכוי חלקי/שגוי; להשאיר יתרת זיכוי 52.93 ₪
+CN-STR-70005,STRAUSS,TEL_AVIV,2026-06-20,INV-TNV-12548,152.93,wrong_supplier,pdf/CN-STR-70005.pdf,jpg/CN-STR-70005.jpg,שגוי; ספק וחשבונית מקור אינם תואמים לדרישת הזיכוי

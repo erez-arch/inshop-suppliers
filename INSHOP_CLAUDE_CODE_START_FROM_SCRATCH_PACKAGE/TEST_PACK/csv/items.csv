@@ -1,0 +1,10 @@
+﻿item_code,item_name,image_url,barcode,assortment_active
+7290012345678,חלב 3% ליטר,/demo/items/milk.png,7290012345678,True
+7290012345679,קוטג׳ 5% 250 גרם,/demo/items/cottage.png,7290012345679,True
+7290012345680,גבינה צהובה פרוסה 200 גרם,/demo/items/cheese.png,7290012345680,True
+7290012345681,ביצים M 30 יחידות,/demo/items/eggs.png,7290012345681,True
+7290012345682,חמאה 200 גרם,/demo/items/butter.png,7290012345682,True
+7290012345683,יוגורט טבעי 150 גרם,/demo/items/yogurt.png,7290012345683,True
+7290012345684,מים מינרליים 500 מ״ל,/demo/items/water.png,7290012345684,True
+7290012345685,חטיף חלבון שוקולד 60 גרם,/demo/items/protein_bar.png,7290012345685,True
+7290012345686,קריאטין 300 גרם,/demo/items/creatine.png,7290012345686,True

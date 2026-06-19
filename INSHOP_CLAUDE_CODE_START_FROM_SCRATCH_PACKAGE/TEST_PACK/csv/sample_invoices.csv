@@ -1,0 +1,5 @@
+﻿invoice_number,supplier_code,branch_code,date,total,subtotal,vat,image_url,pdf_url,scenario_kind,selected_branch
+INV-TNV-12547,TNUVA,RAMAT_GAN,2026-06-18,4439.16,3762.0,677.16,jpg/INV-TNV-12547.jpg,pdf/INV-TNV-12547.pdf,valid,RAMAT_GAN
+INV-TNV-12548,TNUVA,RAMAT_GAN,2026-06-18,4439.16,3762.0,677.16,jpg/INV-TNV-12548.jpg,pdf/INV-TNV-12548.pdf,shortage,RAMAT_GAN
+INV-TNV-12549,TNUVA,RAMAT_GAN,2026-06-19,2421.36,2052.0,369.36,jpg/INV-TNV-12549.jpg,pdf/INV-TNV-12549.pdf,branch_mismatch,TEL_AVIV
+INV-STR-77821,STRAUSS,TEL_AVIV,2026-06-19,1968.24,1668.0,300.24,jpg/INV-STR-77821.jpg,pdf/INV-STR-77821.pdf,unknown_item,TEL_AVIV

@@ -1,0 +1,27 @@
+INSHOP_CLAUDE_CODE_START_FROM_SCRATCH_PACKAGE
+
+Root files:
+- SPEC.pdf
+  Updated full product specification, version 1.1. Main source of truth.
+
+- SPEC.docx
+  Same updated specification in Word format, useful if PDF parsing is incomplete.
+
+- MOCK_DATA.xlsx
+  Mock legacy-system data for ExcelLegacyAdapter / MockLegacyAdapter.
+
+- TEST_PACK/
+  Deterministic QA and demo data:
+  - pdf/: debit invoices, credit invoices, payment confirmations
+  - jpg/: same documents as images for upload/OCR tests
+  - csv/: suppliers, branches, trustees, items, invoices, lines, credits, payments, scenarios
+  - ai_expected_outputs.json: expected deterministic mock AI parser outputs
+  - README.md and CLAUDE_CODE_ADDENDUM.md: extra notes for Claude
+
+Prompt:
+- 01_CLAUDE_CODE_FULL_PROMPT.txt
+  Copy-paste this entire file into Claude Code when starting from scratch.
+
+Claude quick entry:
+- CLAUDE_START_HERE.md
+  Short instruction for Claude to read the full prompt and files.

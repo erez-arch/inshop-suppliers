@@ -1,0 +1,4 @@
+﻿payment_id,supplier_code,date,payment_method,amount,related_invoices,related_credits,pdf_url,image_url,expected
+PAY-BANK-33001,TNUVA,2026-06-25,bank_transfer,8725.39,INV-TNV-12547;INV-TNV-12548,CN-TNV-80125,pdf/PAY-BANK-33001.pdf,jpg/PAY-BANK-33001.jpg,תשלום תקין: סכום נטו לאחר קיזוז זיכוי
+PAY-BANK-33002,TNUVA,2026-06-25,bank_transfer,8000.0,INV-TNV-12547;INV-TNV-12548,CN-TNV-80125,pdf/PAY-BANK-33002.pdf,jpg/PAY-BANK-33002.jpg,תשלום חסר: נשארת יתרה לתשלום 725.39 ₪
+PAY-BANK-33003,TNUVA,2026-06-25,bank_transfer,9000.0,INV-TNV-12547;INV-TNV-12548,CN-TNV-80125,pdf/PAY-BANK-33003.pdf,jpg/PAY-BANK-33003.jpg,תשלום יתר: נוצרת יתרת זכות לספק 274.61 ₪

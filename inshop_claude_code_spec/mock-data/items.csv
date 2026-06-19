@@ -1,7 +1,0 @@
-item_code,item_name,image_url,barcode,assortment_active
-7290012345678,חלב 3% ליטר,/demo/items/milk.png,7290012345678,true
-7290012345679,יוגורט 3% 150 גרם,/demo/items/yogurt.png,7290012345679,true
-7290012345680,גבינה צהובה פרוסה,/demo/items/cheese.png,7290012345680,true
-7290012345681,ביצים M 30 יחידות,/demo/items/eggs.png,7290012345681,true
-7290012345682,חמאה 200 גרם,/demo/items/butter.png,7290012345682,true
-7290012345683,קוטג' 5% 250 גרם,/demo/items/cottage.png,7290012345683,true

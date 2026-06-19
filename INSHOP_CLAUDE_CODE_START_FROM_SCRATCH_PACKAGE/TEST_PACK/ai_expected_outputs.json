@@ -1,0 +1,106 @@
+{
+  "INV-TNV-12547": {
+    "document_type": "supplier_invoice",
+    "supplier": {
+      "supplier_code": "TNUVA",
+      "name": "תנובה בע״מ",
+      "confidence": 0.96
+    },
+    "branch": {
+      "branch_code": "RAMAT_GAN",
+      "name": "סניף רמת גן",
+      "confidence": 0.93
+    },
+    "invoice": {
+      "number": "INV-TNV-12547",
+      "date": "2026-06-18",
+      "total": 4439.16
+    },
+    "lines": [
+      {
+        "name_raw": "חלב תנובה 3% 1 ליטר",
+        "supplier_item_code": "TN-10045",
+        "matched_item_code": "7290012345678",
+        "qty": 240,
+        "unit_price": 5.4,
+        "confidence": 0.94
+      },
+      {
+        "name_raw": "קוטג׳ תנובה 5% 250 גרם",
+        "supplier_item_code": "TN-150-3",
+        "matched_item_code": "7290012345679",
+        "qty": 180,
+        "unit_price": 4.2,
+        "confidence": 0.94
+      },
+      {
+        "name_raw": "עמק פרוס 200 גרם",
+        "supplier_item_code": "CH-PR-20",
+        "matched_item_code": "7290012345680",
+        "qty": 60,
+        "unit_price": 12.0,
+        "confidence": 0.94
+      },
+      {
+        "name_raw": "ביצים M 30 יח׳",
+        "supplier_item_code": "EGG-M-30",
+        "matched_item_code": "7290012345681",
+        "qty": 30,
+        "unit_price": 33.0,
+        "confidence": 0.94
+      }
+    ],
+    "warnings": []
+  },
+  "INV-TNV-12549": {
+    "document_type": "supplier_invoice",
+    "supplier": {
+      "supplier_code": "TNUVA",
+      "name": "תנובה בע״מ",
+      "confidence": 0.96
+    },
+    "branch": {
+      "branch_code": "RAMAT_GAN",
+      "name": "סניף רמת גן",
+      "confidence": 0.93
+    },
+    "invoice": {
+      "number": "INV-TNV-12549",
+      "date": "2026-06-19",
+      "total": 2422.56
+    },
+    "warnings": [
+      {
+        "type": "branch_mismatch",
+        "severity": "blocking",
+        "message": "הספק בחר TEL_AVIV אך החשבונית מזוהה כ-RAMAT_GAN"
+      }
+    ]
+  },
+  "INV-STR-77821": {
+    "document_type": "supplier_invoice",
+    "supplier": {
+      "supplier_code": "STRAUSS",
+      "name": "שטראוס גרופ בע״מ",
+      "confidence": 0.95
+    },
+    "branch": {
+      "branch_code": "TEL_AVIV",
+      "name": "סניף תל אביב",
+      "confidence": 0.92
+    },
+    "invoice": {
+      "number": "INV-STR-77821",
+      "date": "2026-06-19",
+      "total": 1963.52
+    },
+    "warnings": [
+      {
+        "type": "unmatched_item",
+        "severity": "needs_admin_mapping",
+        "supplier_item_code": "ST-NEW-65",
+        "name_raw": "חטיף חדש וניל 65 גרם"
+      }
+    ]
+  }
+}

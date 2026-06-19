@@ -1,0 +1,400 @@
+You are starting this project from scratch.
+
+Work in full autonomous implementation mode.
+Do not ask planning questions.
+Do not stop for confirmations unless an action may delete files outside this project folder or expose secrets.
+If something is ambiguous, make the best product/engineering decision and document it in DECISIONS.md.
+
+FILES IN THIS FOLDER:
+- SPEC.pdf
+- SPEC.docx
+- MOCK_DATA.xlsx
+- TEST_PACK/
+- CLAUDE_START_HERE.md
+- 02_FILE_MAP.txt
+
+PROJECT:
+Build the full INSHOP supplier, inventory, credits and payments system according to the uploaded specification file:
+SPEC.pdf
+
+If PDF parsing is incomplete, also use:
+SPEC.docx
+
+Also use the complete test pack folder:
+TEST_PACK/
+
+Also use:
+MOCK_DATA.xlsx
+
+IMPORTANT SOURCE OF TRUTH:
+The PDF specification is the main source of truth.
+The DOCX is a backup source if PDF parsing misses tables/images.
+The test pack is the source of truth for demo invoices, credit invoices, payment confirmations, expected OCR outputs and QA scenarios.
+
+START CLEAN:
+If this folder already contains old generated code, archive it into /archive_old_build before starting.
+Do not delete SPEC.pdf, SPEC.docx, MOCK_DATA.xlsx, TEST_PACK, README files, .env files, or documentation files.
+If there is no old code, create the application in this project folder.
+
+PRODUCT GOAL:
+Build a fully working standalone demo system.
+Do not build only static screens.
+Do not build a non-functional mockup.
+The system must work end-to-end with real mock data, real calculations, real statuses, real invoice/credit/payment test documents and a real audit trail.
+
+The system must run without any connection to the old INSHOP system.
+All old-system data must come only through LegacyAdapter.
+For now implement:
+- MockLegacyAdapter
+- ExcelLegacyAdapter using MOCK_DATA.xlsx and/or CSV files from TEST_PACK/csv
+
+Do not let UI screens or business logic read Excel/CSV directly.
+Only adapters may read mock legacy files.
+
+PREFERRED STACK:
+Use a modern full-stack TypeScript app:
+- Next.js
+- React
+- TypeScript
+- Tailwind
+- RTL Hebrew UI
+- Prisma or equivalent local persistence
+- SQLite/local DB for standalone demo
+- Seed/reset demo data
+- Automated tests
+
+If the repo already has a different modern stack, use it only if it is clearly better and document why in DECISIONS.md.
+
+CORE FLOW TO IMPLEMENT:
+
+1. Supplier side:
+Supplier opens mobile flow.
+Supplier uploads/scans debit invoice.
+Supplier uploads/takes photos of goods.
+Supplier chooses branch.
+System parses invoice through AIInvoiceParserAdapter.
+System validates supplier, branch, invoice number, date, total and line items.
+System sends mock WhatsApp/SMS notification to the trustee.
+Delivery status becomes reported_supplier.
+
+2. Trustee side:
+Trustee opens personal receiving link.
+System knows the trustee from link/login.
+Trustee sees supplier delivery.
+Trustee scans/approves invoice.
+Trustee uploads/takes photos of received goods.
+Trustee sees invoice lines parsed by AI.
+Trustee confirms each line quantity or changes quantity actually received.
+Trustee can report missing quantities.
+Trustee uploads empty pantry photo and full pantry photo.
+Trustee completes receiving.
+System calculates trustee reward = 2% of invoice value.
+Receiving status becomes trustee_completed.
+This does not yet update final inventory.
+
+3. Admin receiving side:
+Admin sees all pending receiving records.
+Admin sees:
+- supplier invoice image
+- trustee invoice image
+- supplier goods photos
+- trustee goods photos
+- empty pantry photo
+- full pantry photo
+- AI confidence
+- branch/supplier mismatch warnings
+- all invoice line items
+- invoice quantity
+- trustee received quantity
+- admin final inventory quantity
+- shortage amount
+- credit request amount
+
+Admin can:
+- add item
+- remove item
+- search INSHOP item
+- correct item mapping
+- correct quantity entering inventory
+- approve inventory update
+- create credit request
+- send credit request to supplier
+- approve override when needed
+
+Final inventory may be updated only after admin approval.
+Status becomes admin_approved or credit_requested when relevant.
+
+4. Unknown item matching:
+If invoice contains an unknown supplier item, show it as unmatched.
+Admin must be able to match it to an INSHOP item.
+Save the mapping in SupplierItemMapping.
+Next time the same supplier item code/name appears, auto-match it.
+Include audit log for mapping decisions.
+
+5. Credit flow:
+If shortage exists, system creates a credit request.
+Supplier/accountant portal shows credit requests.
+Supplier uploads credit invoice.
+System parses credit invoice through mock AI parser.
+System validates:
+- supplier
+- branch
+- original invoice number if available
+- credit amount
+- credit line items
+- whether it covers the requested credit
+Admin can approve/reject credit invoice.
+Approved credits become available for payment offset.
+
+6. Payments flow:
+Admin payments screen must show supplier invoices ready for payment.
+Admin can select one or more debit invoices.
+System calculates:
+- gross invoice total
+- approved credits to offset
+- open credit requests
+- net amount to pay
+- previous balance
+- remaining balance
+
+Rule:
+An invoice with an open credit request cannot be closed as fully paid unless admin explicitly approves an override with reason.
+
+Admin uploads or records payment proof.
+System parses/records payment details.
+Status becomes paid, partially_paid, overpaid, or payment_pending_credit depending on scenario.
+Show payment history and supplier balance.
+
+7. Inventory count:
+Implement the inventory count module from the spec.
+Before count starts, call LegacyAdapter to simulate closing/checking open branch invoices.
+Count can start only after adapter returns approval or allowed rejected invoices.
+Count all items in units.
+Each item must be saved separately with Swipe/confirm action.
+Count cannot be completed until all items are saved.
+Completed count is locked.
+Admin can unlock only with audit.
+
+8. Inventory formula:
+Implement real mock inventory values.
+Current inventory per branch/item must be calculated as:
+last locked inventory count
++ admin-approved received quantities
+- sales/delta movements from LegacyAdapter
++/- manual admin adjustments with audit
+
+Do not show fake static inventory numbers.
+Inventory must change after approved receiving, sales delta import and new count.
+
+9. Order rules:
+Implement order rules screen:
+- supplier selection
+- delivery days
+- average supply time
+- minimum order amount
+- target stock per item
+- package size
+- supplier item code
+- supplier item name
+- WhatsApp numbers for orders
+- WhatsApp numbers for credit requests
+Each row must save independently.
+
+10. Supplier portal:
+Supplier/accountant can see:
+- deliveries
+- invoices
+- credit requests
+- uploaded credit invoices
+- payment status
+- open balance
+- paid invoices
+- rejected/missing credits
+
+11. Demo / QA page:
+Build /admin/demo-scenarios
+
+It must include:
+- Reset demo data
+- Load seed data
+- Run scenario: clean delivery, no shortage
+- Run scenario: shortage creates credit request
+- Run scenario: wrong branch mismatch
+- Run scenario: unknown supplier item, then mapping, then auto-match
+- Run scenario: supplier uploads correct credit invoice
+- Run scenario: supplier uploads wrong credit invoice
+- Run scenario: admin pays selected invoices with approved credits offset
+- Run scenario: payment blocked because credit request is open
+- Run scenario: partial payment
+- Run scenario: overpayment / supplier balance
+
+Each scenario must show before/after statuses and calculated amounts.
+
+DESIGN / UX:
+All UI must be Hebrew and RTL.
+Use the screen designs and flows from SPEC.pdf as mandatory product reference.
+Do not improvise a totally different UI.
+
+Mobile-first screens:
+- supplier delivery wizard
+- trustee receiving wizard
+- inventory count
+
+Desktop-first screens:
+- admin dashboard
+- admin receiving approval
+- order rules
+- supplier payments
+- supplier/accountant portal
+- demo scenarios
+
+Use clean INSHOP style:
+- white background
+- purple primary actions
+- cards
+- clear status chips
+- large readable Hebrew text
+- mobile wizard progress steps
+- desktop tables with filters and totals
+
+Do not overload mobile screens.
+For mobile, keep one clear action per step.
+
+ADAPTERS:
+Create these interfaces:
+- LegacyAdapter
+- InvoiceParserAdapter
+- NotificationAdapter
+- PaymentProofParserAdapter
+- Storage/Repository layer
+
+Mock implementations:
+- ExcelLegacyAdapter
+- MockLegacyAdapter
+- MockInvoiceParserAdapter
+- MockNotificationAdapter
+- MockPaymentProofParserAdapter
+
+No direct hardcoded business logic inside React components.
+Put business rules in services/domain layer.
+
+DATA MODEL:
+Implement entities similar to:
+- Supplier
+- Branch
+- Trustee
+- AdminUser
+- Item
+- SupplierItemMapping
+- Delivery
+- DeliveryPhoto
+- Invoice
+- InvoiceLine
+- ReceivingSession
+- ReceivingLine
+- AdminReceivingApproval
+- CreditRequest
+- CreditInvoice
+- PaymentBatch
+- PaymentProof
+- InventoryCount
+- InventoryCountLine
+- InventoryMovement
+- OrderRule
+- NotificationLog
+- AuditLog
+- LegacySyncLog
+
+STATUSES:
+Implement clear status transitions.
+Examples:
+
+delivery:
+- reported_supplier
+- trustee_in_progress
+- trustee_completed
+- admin_review
+- admin_approved
+- credit_requested
+- closed
+
+credit:
+- requested
+- sent_to_supplier
+- supplier_uploaded
+- admin_approved
+- rejected
+- offset_in_payment
+
+payment:
+- draft
+- pending_credit
+- ready_to_pay
+- paid
+- partially_paid
+- overpaid
+
+inventory count:
+- waiting_legacy_close
+- ready_to_count
+- in_progress
+- completed
+- locked
+
+TEST DOCUMENTS:
+Use TEST_PACK/.
+Use all included debit invoices, credit invoices, payment confirmations, expected parser outputs and CSV/XLSX data.
+Build deterministic mock parsing:
+If an uploaded file matches a known test invoice filename, return the matching expected parsed data.
+If unknown, return a controlled “needs manual review” result.
+
+Expected test documents include:
+- Debit invoices: INV-TNV-12547, INV-TNV-12548, INV-TNV-12549, INV-STR-77821
+- Credit invoices: CN-TNV-80125, CN-TNV-80126, CN-STR-70005
+- Payment confirmations: PAY-BANK-33001, PAY-BANK-33002, PAY-BANK-33003
+
+QA / TESTS:
+Create automated tests for:
+- supplier delivery creation
+- trustee quantity change
+- shortage calculation
+- credit request generation
+- unknown item mapping
+- mapping reuse
+- admin inventory approval
+- inventory formula
+- payment offset
+- blocked payment when credit is open
+- partial payment
+- overpayment
+- demo reset
+
+Run:
+- npm install
+- npm run lint
+- npm run build
+- npm test
+
+Fix all errors until build passes.
+
+DOCUMENTATION:
+Create:
+- README.md with setup/run instructions
+- DEMO_USERS.md with all demo users and passwords/links
+- QA_SCENARIOS.md with step-by-step test instructions
+- DECISIONS.md for assumptions
+- ARCHITECTURE.md explaining adapters and standalone mode
+
+At the end, print:
+- local run command
+- admin login
+- supplier demo link
+- trustee demo link
+- supplier accountant link
+- demo scenarios URL
+- list of completed modules
+- list of any gaps not completed
+
+COMMIT:
+If git is available, make an initial commit after implementation:
+"Initial standalone INSHOP supplier inventory system"
