@@ -77,7 +77,8 @@ export default function SupplierPage() {
         const pr = data.parsedResult as ParsedResult
         setParsedResult(pr)
 
-        const recognized = pr?.documentType && pr.documentType !== 'unknown' && !pr.needsManualReview
+        // Recognized if AI extracted any useful data — even if documentType is 'unknown'
+        const recognized = pr && (pr.total || pr.invoiceNumber || pr.supplierName || pr.branchCode)
         if (recognized) {
           // Auto-advance — AI recognized the invoice
           if (pr?.branchCode) {
