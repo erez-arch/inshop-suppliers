@@ -1,16 +1,29 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Step = 'upload' | 'branch' | 'photos' | 'contact' | 'done'
+type UploadState = 'idle' | 'analyzing' | 'unrecognized'
 
 interface Branch { id: string; name: string; code: string }
-interface ParsedResult { invoiceNumber?: string; supplierName?: string; total?: number; branchCode?: string; warnings?: Array<{ type: string; message?: string }>; needsManualReview?: boolean }
+interface ParsedResult {
+  documentType?: string
+  invoiceNumber?: string
+  supplierName?: string
+  total?: number
+  branchCode?: string
+  warnings?: Array<{ type: string; message?: string }>
+  needsManualReview?: boolean
+  aiConfidence?: number
+}
 
 const STEPS: Step[] = ['upload', 'branch', 'photos', 'contact', 'done']
 const STEP_LABELS = { upload: 'חשבונית', branch: 'סניף', photos: 'תמונות', contact: 'פרטים', done: 'אישור' }
 
 export default function SupplierPage() {
   const [step, setStep] = useState<Step>('upload')
+  const [uploadState, setUploadState] = useState<UploadState>('idle')
+  const [uploadedPreview, setUploadedPreview] = useState<string | null>(null)
+  const [elapsed, setElapsed] = useState(0)
   const [branches, setBranches] = useState<Branch[]>([])
   const [deliveryId, setDeliveryId] = useState<string | null>(null)
   const [parsedResult, setParsedResult] = useState<ParsedResult | null>(null)
@@ -21,45 +34,81 @@ export default function SupplierPage() {
   const [supplierPhone, setSupplierPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     fetch('/api/master/branches').then(r => r.json()).then(setBranches)
   }, [])
 
+  useEffect(() => {
+    if (uploadState === 'analyzing') {
+      setElapsed(0)
+      timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [uploadState])
+
   async function handleInvoiceUpload(file: File) {
-    setLoading(true)
+    const preview = URL.createObjectURL(file)
+    setUploadedPreview(preview)
+    setUploadState('analyzing')
     setErr('')
 
-    // Create draft delivery
-    const draftRes = await fetch('/api/deliveries', { method: 'POST' })
-    if (!draftRes.ok) { setErr('שגיאה ביצירת אספקה'); setLoading(false); return }
-    const draftData = await draftRes.json()
-    const did = draftData.id || draftData.delivery?.id
-    if (!did) { setErr('שגיאה ביצירת אספקה'); setLoading(false); return }
-    setDeliveryId(did)
-
-    // Upload invoice for AI parsing
     try {
+      // Create draft delivery
+      const draftRes = await fetch('/api/deliveries', { method: 'POST' })
+      if (!draftRes.ok) throw new Error('draft_failed')
+      const draftData = await draftRes.json()
+      const did = draftData.id || draftData.delivery?.id
+      if (!did) throw new Error('no_id')
+      setDeliveryId(did)
+
+      // Upload invoice for AI parsing
       const fd = new FormData()
       fd.append('file', file)
       fd.append('photoType', 'supplier_invoice')
       fd.append('deliveryId', did)
       const res = await fetch('/api/upload', { method: 'POST', body: fd })
+
       if (res.ok) {
         const data = await res.json()
         const pr = data.parsedResult as ParsedResult
         setParsedResult(pr)
-        if (pr?.branchCode) {
-          const matched = branches.find(b => b.code === pr.branchCode)
-          if (matched) setBranchId(matched.id)
+
+        const recognized = pr?.documentType && pr.documentType !== 'unknown' && !pr.needsManualReview
+        if (recognized) {
+          // Auto-advance — AI recognized the invoice
+          if (pr?.branchCode) {
+            const matched = branches.find(b => b.code === pr.branchCode)
+            if (matched) setBranchId(matched.id)
+          }
+          setUploadState('idle')
+          setStep('branch')
+        } else {
+          // Not recognized — let user decide
+          setUploadState('unrecognized')
         }
+      } else {
+        setUploadState('unrecognized')
       }
-      // Even if upload failed, allow user to continue manually
     } catch {
-      // Network error — continue without AI result
+      setUploadState('unrecognized')
     }
+  }
+
+  function handleManualContinue() {
+    setUploadState('idle')
     setStep('branch')
-    setLoading(false)
+  }
+
+  function handleReupload() {
+    if (uploadedPreview) URL.revokeObjectURL(uploadedPreview)
+    setUploadedPreview(null)
+    setUploadState('idle')
+    setParsedResult(null)
+    setDeliveryId(null)
   }
 
   function handleBranchNext() {
@@ -92,11 +141,9 @@ export default function SupplierPage() {
     setLoading(true)
     setErr('')
 
-    // Fetch current delivery to get version
     const delRes = await fetch(`/api/deliveries/${deliveryId}`)
     const delData = await delRes.json()
 
-    // Update delivery with contact info and branch
     const patchRes = await fetch(`/api/deliveries/${deliveryId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -150,17 +197,83 @@ export default function SupplierPage() {
         {step === 'upload' && (
           <div className="card mt-4">
             <h2 className="font-bold text-lg mb-1">העלאת חשבונית</h2>
-            <p className="text-sm text-gray-500 mb-4">צלם או העלה את החשבונית שקיבלת</p>
-            <label
-              htmlFor="invoice-file-input"
-              className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors block"
-            >
-              <div className="text-4xl mb-2">📷</div>
-              <div className="font-medium text-purple-700">לחץ לצילום / העלאה</div>
-              <div className="text-xs text-gray-400 mt-1">JPG, PNG, PDF</div>
-            </label>
-            <input id="invoice-file-input" type="file" accept="image/*,.pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f) }} />
-            {loading && <div className="text-center mt-4 text-purple-600 text-sm">מעבד חשבונית עם AI...</div>}
+
+            {/* Idle — show upload area */}
+            {uploadState === 'idle' && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">צלם או העלה את החשבונית שקיבלת</p>
+                <label
+                  htmlFor="invoice-file-input"
+                  className="border-2 border-dashed border-purple-300 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-colors block"
+                >
+                  <div className="text-4xl mb-2">📷</div>
+                  <div className="font-medium text-purple-700">לחץ לצילום / העלאה</div>
+                  <div className="text-xs text-gray-400 mt-1">JPG, PNG, PDF</div>
+                </label>
+                <input
+                  id="invoice-file-input"
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleInvoiceUpload(f) }}
+                />
+              </>
+            )}
+
+            {/* Analyzing — show image + timer */}
+            {uploadState === 'analyzing' && (
+              <div className="text-center py-2">
+                {uploadedPreview && (
+                  <div className="mb-4 relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={uploadedPreview}
+                      alt="חשבונית"
+                      className="max-h-48 max-w-full rounded-xl shadow-md object-contain mx-auto"
+                    />
+                    <div className="absolute inset-0 bg-purple-900/10 rounded-xl" />
+                  </div>
+                )}
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-2xl animate-spin">⏳</span>
+                  <span className="font-medium text-purple-700">מנתח חשבונית עם AI</span>
+                </div>
+                <div className="text-gray-400 text-sm mb-3">{elapsed} שניות</div>
+                <div className="flex justify-center gap-1">
+                  {[0,1,2].map(i => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full bg-purple-400 animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unrecognized — show image + options */}
+            {uploadState === 'unrecognized' && (
+              <div className="text-center py-2">
+                {uploadedPreview && (
+                  <div className="mb-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={uploadedPreview}
+                      alt="חשבונית"
+                      className="max-h-48 max-w-full rounded-xl shadow-md object-contain mx-auto"
+                    />
+                  </div>
+                )}
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4 text-sm text-right">
+                  <div className="text-orange-700 font-medium mb-1">⚠️ החשבונית לא זוהתה אוטומטית</div>
+                  <div className="text-gray-600">ניתן להמשיך ידנית או להעלות תמונה טובה יותר</div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleManualContinue} className="btn-primary flex-1">המשך ידני →</button>
+                  <button onClick={handleReupload} className="btn-secondary">העלה מחדש</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -168,7 +281,7 @@ export default function SupplierPage() {
         {step === 'branch' && (
           <div className="card mt-4">
             <h2 className="font-bold text-lg mb-1">בחירת סניף</h2>
-            {parsedResult && (
+            {parsedResult && (parsedResult.supplierName || parsedResult.invoiceNumber || parsedResult.total || parsedResult.branchCode) && (
               <div className="bg-purple-50 rounded-lg p-3 mb-4 text-sm">
                 <div className="font-medium text-purple-700 mb-1">🤖 זיהוי AI</div>
                 {parsedResult.supplierName && <div>ספק: <strong>{parsedResult.supplierName}</strong></div>}
@@ -176,12 +289,11 @@ export default function SupplierPage() {
                 {parsedResult.total && <div>סכום: <strong>₪{parsedResult.total}</strong></div>}
                 {parsedResult.branchCode && <div>סניף שזוהה: <strong>{parsedResult.branchCode}</strong></div>}
                 {parsedResult.warnings?.map((w, i) => <div key={i} className="text-yellow-700 mt-1">⚠️ {w.message || w.type}</div>)}
-                {parsedResult.needsManualReview && <div className="text-orange-600 mt-1">⚠️ נדרשת סקירה ידנית</div>}
               </div>
             )}
             {dissonance && (
               <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 mb-4 text-sm text-yellow-800">
-                ⚠️ שים לב: הסניף שנבחר שונה מהסניף שזוהה על ידי AI. ניתן להמשיך ולאשר חריג זה.
+                ⚠️ שים לב: הסניף שנבחר שונה מהסניף שזוהה על ידי AI
               </div>
             )}
             <p className="text-sm text-gray-500 mb-3">לאיזה סניף הגיעה האספקה?</p>
@@ -273,7 +385,11 @@ export default function SupplierPage() {
             <div className="text-5xl mb-4">✅</div>
             <h2 className="font-bold text-xl mb-2 text-green-700">הדוח נשלח בהצלחה!</h2>
             <p className="text-sm text-gray-500 mb-6">הנאמן והמשרד יקבלו הודעה. תודה!</p>
-            <button onClick={() => { setStep('upload'); setDeliveryId(null); setParsedResult(null); setBranchId(''); setPhotoFiles([]); setSupplierName(''); setSupplierPhone('') }} className="btn-secondary text-sm">
+            <button onClick={() => {
+              setStep('upload'); setUploadState('idle'); setUploadedPreview(null)
+              setDeliveryId(null); setParsedResult(null); setBranchId('')
+              setPhotoFiles([]); setSupplierName(''); setSupplierPhone('')
+            }} className="btn-secondary text-sm">
               + דיווח אספקה נוספת
             </button>
           </div>
