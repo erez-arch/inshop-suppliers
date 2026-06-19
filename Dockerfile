@@ -17,4 +17,4 @@ ENV DATABASE_URL=file:/data/prod.db
 
 EXPOSE 3000
 
-CMD sh -c "npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npm start"
+CMD sh -c "npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npx next start -p ${PORT:-3000} -H 0.0.0.0"

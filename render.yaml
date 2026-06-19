@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: inshop-suppliers
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/data/prod.db
+      - key: SESSION_SECRET
+        generateValue: true
